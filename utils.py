@@ -113,7 +113,7 @@ class CodApSimulator():
 
     def get_path_to_save(self):
         """Returns the path to save the results"""
-        
+
         os.makedirs('results', exist_ok=True)
         saving_dir = os.path.join('results', self.name)
         os.makedirs(saving_dir, exist_ok=True)
@@ -124,8 +124,9 @@ class CodApSimulator():
         np.save(os.path.join(self.saving_dir, 'image.npy'), self.sensor_screen)
         # Copy the config file to the results folder
         shutil.copy(self.config_path, self.saving_dir)
-        
+
     def make_image(self):
+        """Simulates the propagation of photons through the slit"""
 
         for _ in tqdm(range(self.n_photons)):
             theta, phi = self.sample_angles()
@@ -205,10 +206,14 @@ class CodApSimulator():
         phi = self.rng.uniform(0, np.pi/2, self.source_mask.shape)
         return theta, phi
 
-if __name__ == '__main__':
+def main():
+    """Main function of the script. Parses the arguments and runs the simulation."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, help='Path to the config file')
     args = parser.parse_args()
     config_path = args.config
     simulator = CodApSimulator(config_path)
     simulator.play_simulation()
+
+if __name__ == '__main__':
+    main()
