@@ -1,6 +1,5 @@
-import numpy as np
 import json
-from enum import Enum
+import numpy as np
 from tqdm import tqdm
 import os
 import shutil
@@ -34,6 +33,8 @@ class MaskGenerator:
             return self.generate_pinhole_mask()
         elif self.mask_type == "frame":
             return self.generate_frame_mask()
+        elif "pattern" in self.mask_type:
+            return self.load_pattern_slit()
         else:
             raise ValueError("Invalid mask type")
 
@@ -90,6 +91,18 @@ class MaskGenerator:
         ] = 0
         return mask
 
+    def load_pattern_slit(self):
+        path = f'patterns/{self.mask_type}.png'
+        # Load the png image as a mask matrix
+        try:
+            mask = plt.imread(path)
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(f"File {path} not found. Check if it's correct") from exc
+        mask = mask[:, :, 3]
+        # Resize the mask to the desired size
+        mask = np.resize(mask, self.mask_size)
+        plt.show()
+        return mask
 
 class CodApSimulator:
     def __init__(self, config_path):
@@ -161,7 +174,7 @@ class CodApSimulator:
                                 self.sensor_screen[
                                     sensor_position[0], sensor_position[1]
                                 ] += 1
-                            except: # The photon missed the sensor screen
+                            except IndexError: # The photon missed the sensor screen
                                 pass
 
     def passes_through_slit(self, position, angles) -> bool:
