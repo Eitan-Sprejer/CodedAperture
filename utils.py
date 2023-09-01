@@ -5,6 +5,13 @@ from tqdm import tqdm
 import os
 import shutil
 import argparse
+import matplotlib.pyplot as plt
+
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['mathtext.fontset'] = 'cm'
+plt.rcParams['figure.dpi'] = 120
+plt.rcParams['legend.fontsize'] = "small"
+plt.rcParams['axes.labelsize'] = 'large'
 
 
 def get_config_from_path(path) -> dict:
@@ -70,23 +77,16 @@ class MaskGenerator:
         """Generates a mask with a square frame shape"""
         height, length = self.mask_size
         mask = np.zeros((height, length))
-        slit_outer_radius = int((np.min(height, length) + self.mask_width) / 2)
+        slit_outer_radius = int((np.min([height, length]) + self.mask_width) / 2)
         mask[
-            int(height * 0.5)
-            - slit_outer_radius : int(height * 0.5)
-            + slit_outer_radius,
-            int(length * 0.5)
-            - slit_outer_radius : int(length * 0.5)
-            + slit_outer_radius,
+            int((height - slit_outer_radius)/2) : int((height + slit_outer_radius)/2),
+            int((length - slit_outer_radius)/2) : int((length + slit_outer_radius)/2)
         ] = 1
-        slit_inner_radius = int((np.min(height, length) - self.mask_width) / 2)
+        slit_inner_radius = int((np.min([height, length]) - self.mask_width) / 2)
+
         mask[
-            int(height * 0.5)
-            - slit_inner_radius : int(height * 0.5)
-            + slit_inner_radius,
-            int(length * 0.5)
-            - slit_inner_radius : int(length * 0.5)
-            + slit_inner_radius,
+            int((height - slit_inner_radius)/2) : int((height + slit_inner_radius)/2),
+            int((length - slit_inner_radius)/2) : int((length + slit_inner_radius)/2)
         ] = 0
         return mask
 
@@ -101,7 +101,6 @@ class CodApSimulator:
         self.source2slit_dist = self.options["source_to_slit_distance"]
         self.slit2sensor_dist = self.options["slit_to_sensor_distance"]
         self.source2sensor_dist = self.source2slit_dist + self.slit2sensor_dist
-        self.n_photons = self.options["photons_per_pixel"]
         self.pixel_separation = self.options["inter_pixel_distance"]
 
         self.saving_dir = self.get_path_to_save()
@@ -113,6 +112,7 @@ class CodApSimulator:
         self.slit_mask_generator = MaskGenerator(self.config["slit"])
         self.slit_mask = self.slit_mask_generator.generate_mask()
 
+        self.source_screen = self.source_mask * self.n_photons
         self.sensor_screen = np.zeros(self.options["sensor_size"])
 
     def play_simulation(self):
@@ -183,13 +183,13 @@ class CodApSimulator:
             or intersection_pixel_coordinates[1] >= self.slit_mask.shape[1]
         ):
             return False
-        else:
-            return (
-                self.slit_mask[
-                    intersection_pixel_coordinates[0], intersection_pixel_coordinates[1]
-                ]
-                == 1
-            )
+
+        return (
+            self.slit_mask[
+                intersection_pixel_coordinates[0], intersection_pixel_coordinates[1]
+            ]
+            == 1
+        )
 
     def compute_landing_pixel(self, position, angles, z_distance):
         """
@@ -238,6 +238,26 @@ def main():
     simulator = CodApSimulator(config_path)
     simulator.play_simulation()
 
+    # Plot the results
+    fig = plt.figure(figsize=(30, 10))
+    plt.subplot(1, 3, 1)
+    vmin, vmax = 0, float(np.max(simulator.source_screen))
+    im = plt.imshow(simulator.source_screen, vmin=vmin, vmax=vmax)
+    cbar_ax = fig.add_axes([0.05, 0.15, 0.01, 0.7])
+    fig.colorbar(im, cax=cbar_ax)
+    plt.title('Source Photons')
+    plt.subplot(1, 3, 2)
+    plt.imshow(simulator.slit_mask, cmap='binary_r')
+    plt.title('Slit screen')
+    plt.subplot(1, 3, 3)
+    vmin, vmax = 0, float(np.max(simulator.sensor_screen))
+    im = plt.imshow(simulator.sensor_screen, vmin=vmin, vmax=vmax)
+    plt.imshow(simulator.sensor_screen, vmin=vmin, vmax=vmax)
+    cbar_ax = fig.add_axes([0.95, 0.15, 0.01, 0.7])
+    fig.colorbar(im, cax=cbar_ax)
+    plt.title('Detected Photons')
+    # Save figure
+    plt.savefig(os.path.join(simulator.saving_dir, 'results.png'))
 
 if __name__ == "__main__":
     main()
