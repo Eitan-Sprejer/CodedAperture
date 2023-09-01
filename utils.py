@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['mathtext.fontset'] = 'cm'
 plt.rcParams['figure.dpi'] = 120
-plt.rcParams['legend.fontsize'] = "small"
+plt.rcParams['legend.fontsize'] = "medium"
 plt.rcParams['axes.labelsize'] = 'large'
 
 
@@ -157,9 +157,12 @@ class CodApSimulator:
                                 self.source2sensor_dist,
                             )
                             # Add the photon to the sensor screen.
-                            self.sensor_screen[
-                                sensor_position[0], sensor_position[1]
-                            ] += 1
+                            try:
+                                self.sensor_screen[
+                                    sensor_position[0], sensor_position[1]
+                                ] += 1
+                            except: # The photon missed the sensor screen
+                                pass
 
     def passes_through_slit(self, position, angles) -> bool:
         """
