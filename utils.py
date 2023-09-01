@@ -15,8 +15,8 @@ plt.rcParams['axes.labelsize'] = 'large'
 
 
 def get_config_from_path(path) -> dict:
-    with open(path, "r") as f:
-        config = json.load(f)
+    with open(path, "r") as file:
+        config = json.load(file)
     return config
 
 
