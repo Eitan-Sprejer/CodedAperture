@@ -6,11 +6,11 @@ import shutil
 import argparse
 import matplotlib.pyplot as plt
 
-plt.rcParams['font.family'] = 'serif'
-plt.rcParams['mathtext.fontset'] = 'cm'
-plt.rcParams['figure.dpi'] = 120
-plt.rcParams['legend.fontsize'] = "medium"
-plt.rcParams['axes.labelsize'] = 'large'
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["mathtext.fontset"] = "cm"
+plt.rcParams["figure.dpi"] = 120
+plt.rcParams["legend.fontsize"] = "medium"
+plt.rcParams["axes.labelsize"] = "large"
 
 
 def get_config_from_path(path) -> dict:
@@ -80,29 +80,40 @@ class MaskGenerator:
         mask = np.zeros((height, length))
         slit_outer_radius = int((np.min([height, length]) + self.mask_width) / 2)
         mask[
-            int((height - slit_outer_radius)/2) : int((height + slit_outer_radius)/2),
-            int((length - slit_outer_radius)/2) : int((length + slit_outer_radius)/2)
+            int((height - slit_outer_radius) / 2) : int(
+                (height + slit_outer_radius) / 2
+            ),
+            int((length - slit_outer_radius) / 2) : int(
+                (length + slit_outer_radius) / 2
+            ),
         ] = 1
         slit_inner_radius = int((np.min([height, length]) - self.mask_width) / 2)
 
         mask[
-            int((height - slit_inner_radius)/2) : int((height + slit_inner_radius)/2),
-            int((length - slit_inner_radius)/2) : int((length + slit_inner_radius)/2)
+            int((height - slit_inner_radius) / 2) : int(
+                (height + slit_inner_radius) / 2
+            ),
+            int((length - slit_inner_radius) / 2) : int(
+                (length + slit_inner_radius) / 2
+            ),
         ] = 0
         return mask
 
     def load_pattern_slit(self):
-        path = f'patterns/{self.mask_type}.png'
+        path = f"patterns/{self.mask_type}.png"
         # Load the png image as a mask matrix
         try:
             mask = plt.imread(path)
         except FileNotFoundError as exc:
-            raise FileNotFoundError(f"File {path} not found. Check if it's correct") from exc
+            raise FileNotFoundError(
+                f"File {path} not found. Check if it's correct"
+            ) from exc
         mask = mask[:, :, 3]
         # Resize the mask to the desired size
         mask = np.resize(mask, self.mask_size)
         plt.show()
         return mask
+
 
 class CodApSimulator:
     def __init__(self, config_path):
@@ -153,95 +164,128 @@ class CodApSimulator:
     def make_image(self):
         """Simulates the propagation of photons through the slit"""
 
-        for _ in tqdm(range(self.n_photons)):
-            theta, phi = self.sample_angles()
+        theta, phi = self.sample_angles()
 
-            for i in range(self.source_mask.shape[0]):
-                for j in range(self.source_mask.shape[1]):
-                    if self.source_mask[i, j] == 1:
-                        passes_through = self.passes_through_slit(
-                            np.array([i, j, 0]), (theta[i, j], phi[i, j])
-                        )
-                        if passes_through:
-                            # Compute the position of the photon in the sensor screen.
-                            sensor_position = self.compute_landing_pixel(
-                                np.array([i, j, self.source2slit_dist]),
-                                (theta[i, j], phi[i, j]),
-                                self.source2sensor_dist,
-                            )
-                            # Add the photon to the sensor screen.
-                            try:
-                                self.sensor_screen[
-                                    sensor_position[0], sensor_position[1]
-                                ] += 1
-                            except IndexError: # The photon missed the sensor screen
-                                pass
+        # Find the coordinates of non-zero elements in the source mask
+        i_coords, j_coords = np.where(self.source_mask == 1)
 
-    def passes_through_slit(self, position, angles) -> bool:
+        for photon_number in tqdm(range(self.n_photons)):
+            # Sample the angles for the photon
+            photon_theta = theta[i_coords, j_coords, photon_number]
+            photon_phi = phi[i_coords, j_coords, photon_number]
+
+            # Check if the photons pass through the slit
+            passes_through = self.passes_through_slit(
+                np.vstack((i_coords, j_coords, np.zeros_like(i_coords))).T,
+                np.vstack((photon_theta, photon_phi)).T,
+            )
+
+            # Compute the sensor positions for photons that pass through the slit
+            valid_photons = passes_through.nonzero()[0]
+            landing_positions = self.compute_landing_pixels(
+                np.vstack(
+                    (
+                        i_coords[valid_photons],
+                        j_coords[valid_photons],
+                        np.zeros_like(valid_photons),
+                    )
+                ).T,
+                np.vstack((photon_theta[valid_photons], photon_phi[valid_photons])).T,
+                self.source2sensor_dist,
+            )
+
+            # Increment the sensor screen for valid landing positions
+            for sensor_position in landing_positions:
+                try:
+                    self.sensor_screen[sensor_position[0], sensor_position[1]] += 1
+                except IndexError:
+                    pass
+
+    def passes_through_slit(self, positions, angles):
         """
-        Returns True if the pixel is within the slit, False otherwise.
+        Returns a boolean array indicating whether each photon passes through the slit.
+
+        Parameters:
+        positions: np.array
+            The positions of the pixels in the source mask for all photons.
+        angles: np.array
+            The angles of the director vectors for all photons.
+
+        Returns:
+        np.array
+            A boolean array where True indicates a photon passes through the slit.
+        """
+
+        # Compute the intersection pixel coordinates for all photons
+        intersection_pixel_coordinates = self.compute_landing_pixels(
+            positions, angles, self.source2slit_dist
+        )
+
+        # Check if the intersection coordinates are within the slit dimensions for all photons
+        within_slit_bounds = (
+            (intersection_pixel_coordinates[:, 0] >= 0)
+            & (intersection_pixel_coordinates[:, 0] < self.slit_mask.shape[0])
+            & (intersection_pixel_coordinates[:, 1] >= 0)
+            & (intersection_pixel_coordinates[:, 1] < self.slit_mask.shape[1])
+        )
+
+        # Create a boolean array of the same length as positions, initialized with False
+        passes_through = np.zeros(positions.shape[0], dtype=bool)
+
+        # Set True for the photons that are within slit bounds and the corresponding
+        # slit_mask value is 1
+        valid_indices = np.where(within_slit_bounds)[0]
+        valid_coords = intersection_pixel_coordinates[valid_indices]
+        passes_through[valid_indices] = (
+            self.slit_mask[valid_coords[:, 0], valid_coords[:, 1]] == 1
+        )
+
+        return passes_through
+
+    def compute_landing_pixels(self, positions, angles, z_distance):
+        """
+        Computes the pixels in the sensor screen where the photons land.
 
         Parameters
         ----------
-        position: np.array
-            The position of the pixel in the source mask.
-        angles: tuple
-            The angles of the director vector for the photon.
-        """
-        intersection_pixel_coordinates = self.compute_landing_pixel(
-            position, angles, self.source2slit_dist
-        )
-
-        # Check that the intersection is within the slit screen.
-        if (
-            np.any(intersection_pixel_coordinates < 0)
-            or intersection_pixel_coordinates[0] >= self.slit_mask.shape[0]
-            or intersection_pixel_coordinates[1] >= self.slit_mask.shape[1]
-        ):
-            return False
-
-        return (
-            self.slit_mask[
-                intersection_pixel_coordinates[0], intersection_pixel_coordinates[1]
-            ]
-            == 1
-        )
-
-    def compute_landing_pixel(self, position, angles, z_distance):
-        """
-        Computes the pixel in the sensor screen where the photon lands.
-
-        Parameters
-        ----------
-        position: np.array
-            The position of the pixel in the source mask.
-        angles: tuple
-            The angles of the director vector for the photon.
+        positions: np.array
+            The positions of the pixels in the source mask.
+        angles: np.array
+            The angles of the director vectors for the photons.
+        z_distance: float
+            The distance from the source mask to the sensor screen for all photons.
         """
 
-        theta, phi = angles[0], angles[1]
+        theta, phi = angles[:, 0], angles[:, 1]
 
-        # Create the origin pixel vector.
-        origin_vector = np.array([*position[:2] * self.pixel_separation, position[2]])
-        # Create the direction pixel vector.
-        unit_direction_vector = np.array(
-            [np.cos(theta) * np.sin(phi), np.sin(theta) * np.sin(phi), np.cos(phi)]
+        # Create the origin pixel vectors for all pixels.
+        origin_vectors = np.column_stack(
+            (
+                positions[:, 0] * self.pixel_separation,
+                positions[:, 1] * self.pixel_separation,
+                positions[:, 2],
+            )
         )
-        # Compute the intersection of the pixel direction with the slit screen.
-        intersection_vector = (
-            origin_vector
-            + unit_direction_vector * z_distance / unit_direction_vector[2]
+        # Create the unit direction pixel vectors for all photons.
+        unit_direction_vectors = np.column_stack(
+            (np.cos(theta) * np.sin(phi), np.sin(theta) * np.sin(phi), np.cos(phi))
         )
-        # Compute the pixel coordinates of the intersection.
+        # Compute the intersections of the pixel directions with the slit screen for all photons.
+        intersection_vectors = origin_vectors + unit_direction_vectors * (
+            z_distance / unit_direction_vectors[:, 2][:, np.newaxis]
+        )
+        # Compute the pixel coordinates of the intersections for all photons.
         intersection_pixel_coordinates = (
-            intersection_vector[:2] / self.pixel_separation
+            intersection_vectors[:, :2] / self.pixel_separation
         ).astype(int)
         return intersection_pixel_coordinates
 
     def sample_angles(self):
         """Samples the angles of the photons from a uniform distribution"""
-        theta = self.rng.uniform(0, 2 * np.pi, self.source_mask.shape)
-        phi = self.rng.uniform(0, np.pi / 2, self.source_mask.shape)
+        theta = self.rng.uniform(
+            0, 2 * np.pi, [*self.source_mask.shape, self.n_photons]
+        )
+        phi = self.rng.uniform(0, np.pi / 2, [*self.source_mask.shape, self.n_photons])
         return theta, phi
 
 
@@ -261,19 +305,20 @@ def main():
     im = plt.imshow(simulator.source_screen, vmin=vmin, vmax=vmax)
     cbar_ax = fig.add_axes([0.05, 0.15, 0.01, 0.7])
     fig.colorbar(im, cax=cbar_ax)
-    plt.title('Source Photons')
+    plt.title("Source Photons")
     plt.subplot(1, 3, 2)
-    plt.imshow(simulator.slit_mask, cmap='binary_r')
-    plt.title('Slit screen')
+    plt.imshow(simulator.slit_mask, cmap="binary_r")
+    plt.title("Slit screen")
     plt.subplot(1, 3, 3)
     vmin, vmax = 0, float(np.max(simulator.sensor_screen))
     im = plt.imshow(simulator.sensor_screen, vmin=vmin, vmax=vmax)
     plt.imshow(simulator.sensor_screen, vmin=vmin, vmax=vmax)
     cbar_ax = fig.add_axes([0.95, 0.15, 0.01, 0.7])
     fig.colorbar(im, cax=cbar_ax)
-    plt.title('Detected Photons')
+    plt.title("Detected Photons")
     # Save figure
-    plt.savefig(os.path.join(simulator.saving_dir, 'results.png'))
+    plt.savefig(os.path.join(simulator.saving_dir, "results.png"))
+
 
 if __name__ == "__main__":
     main()
