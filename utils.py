@@ -117,19 +117,33 @@ class MaskGenerator:
 
 class CodApSimulator:
     def __init__(self, config_path):
+
+        # Initializing attributes.
         self.config_path = config_path
         self.config = get_config_from_path(config_path)
         self.name = self.config["name"]
         self.options = self.config["options"]
+
         self.n_photons = self.options["photons_per_pixel"]
         self.source2slit_dist = self.options["source_to_slit_distance"]
         self.slit2sensor_dist = self.options["slit_to_sensor_distance"]
         self.source2sensor_dist = self.source2slit_dist + self.slit2sensor_dist
         self.pixel_separation = self.options["inter_pixel_distance"]
+        self.theta_bounds = np.array(self.options['thetha_bounds'], dtype=float)
+        self.phi_bounds = np.array(self.options['phi_bounds'], dtype=float)
 
+        self.sensor_type = self.options["sensor_type"]
+        self.noise = self.config[self.sensor_type]
+        self.readout_noise = self.noise["readout_noise"]
+        self.dark_current_noise = self.noise['dark_current'] * self.options['exposure_time']
         self.saving_dir = self.get_path_to_save()
         self.rng = np.random.default_rng(seed=self.options["random_seed"])
 
+        # Converting the bounds to radians.
+        self.theta_bounds *= (np.pi / 180)
+        self.phi_bounds *= (np.pi / 180)
+
+        # Generating the masks, using the MaskGenerator class.
         self.source_mask_generator = MaskGenerator(self.config["source"])
         self.source_mask = self.source_mask_generator.generate_mask()
 
@@ -138,10 +152,15 @@ class CodApSimulator:
 
         self.source_screen = self.source_mask * self.n_photons
         self.sensor_screen = np.zeros(self.options["sensor_size"])
+        self.noise_matrix = np.zeros(self.sensor_screen.shape)
 
     def play_simulation(self):
+        """Plays the simulation"""
         print("Simulating the propagation of photons through the slit...")
         self.make_image()
+        if self.options["add_noise"]:
+            print('Adding noise to the image...')
+            self.add_noise()
         print("Done!")
         print("Saving results...")
         self.save_results()
@@ -161,18 +180,30 @@ class CodApSimulator:
         # Copy the config file to the results folder
         shutil.copy(self.config_path, self.saving_dir)
 
+    def add_noise(self):
+        """Adds noise to the image"""
+        self.noise_matrix += self.rng.poisson(
+            lam=self.dark_current_noise, size=self.sensor_screen.shape
+        )
+        self.noise_matrix += np.round(
+            self.rng.normal(
+                loc=0, scale=self.readout_noise, size=self.sensor_screen.shape
+            )
+        )
+        self.sensor_screen += self.noise_matrix
+
     def make_image(self):
         """Simulates the propagation of photons through the slit"""
-
-        theta, phi = self.sample_angles()
 
         # Find the coordinates of non-zero elements in the source mask
         i_coords, j_coords = np.where(self.source_mask == 1)
 
-        for photon_number in tqdm(range(self.n_photons)):
+        for _ in tqdm(range(self.n_photons)):
             # Sample the angles for the photon
-            photon_theta = theta[i_coords, j_coords, photon_number]
-            photon_phi = phi[i_coords, j_coords, photon_number]
+            theta, phi = self.sample_angles()
+
+            photon_theta = theta[i_coords, j_coords]
+            photon_phi = phi[i_coords, j_coords]
 
             # Check if the photons pass through the slit
             passes_through = self.passes_through_slit(
@@ -282,10 +313,8 @@ class CodApSimulator:
 
     def sample_angles(self):
         """Samples the angles of the photons from a uniform distribution"""
-        theta = self.rng.uniform(
-            0, 2 * np.pi, [*self.source_mask.shape, self.n_photons]
-        )
-        phi = self.rng.uniform(0, np.pi / 2, [*self.source_mask.shape, self.n_photons])
+        theta = self.rng.uniform(*self.theta_bounds, self.source_mask.shape)
+        phi = self.rng.uniform(*self.phi_bounds, self.source_mask.shape)
         return theta, phi
 
 
@@ -319,6 +348,11 @@ def main():
     # Save figure
     plt.savefig(os.path.join(simulator.saving_dir, "results.png"))
 
+    # plot the noise matrix
+    plt.figure(figsize=(10, 10))
+    plt.imshow(simulator.noise_matrix)
+    plt.colorbar()
+    plt.savefig(os.path.join(simulator.saving_dir, "noise_matrix.png"))
 
 if __name__ == "__main__":
     main()
