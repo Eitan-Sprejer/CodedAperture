@@ -1,21 +1,34 @@
 {
-    "name": "test4",
+    "name": "phi pinhole noise skipper",
     "options": {
+        "add_noise": true,
+        "sensor_type": "skipper",
+        "exposure_time": 600,
         "sensor_size": [100, 100],
-        "source_to_slit_distance": 100,
-        "slit_to_sensor_distance": 100,
-        "photons_per_pixel": 2000,
+        "source_to_slit_distance": 200,
+        "slit_to_sensor_distance": 200,
+        "photons_per_pixel": 50000,
         "inter_pixel_distance": 1,
+        "thetha_bounds": [0, 360],
+        "phi_bounds": [0, 90],
         "random_seed": 42
     },
     "source": {
         "mask_size": [100, 100],
         "mask_type": "phi",
-        "mask_width": 6
+        "mask_width": 10
     },
     "slit": {
         "mask_size": [100, 100],
-        "mask_type": "frame",
-        "mask_width": 6
+        "mask_type": "pinhole",
+        "mask_width": 5
+    },
+    "skipper": {
+        "readout_noise": 0.01,
+        "dark_current": 0.00001
+    },
+    "normal_ccd": {
+        "readout_noise": 3,
+        "dark_current": 1
     }
 }
