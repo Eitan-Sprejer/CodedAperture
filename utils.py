@@ -5,6 +5,8 @@ import os
 import shutil
 import argparse
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
+import timeit
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
@@ -14,13 +16,34 @@ plt.rcParams["axes.labelsize"] = "large"
 
 
 def get_config_from_path(path) -> dict:
+    """Loads a json file from a path and returns a dictionary with the config"""
     with open(path, "r") as file:
         config = json.load(file)
     return config
 
+def get_objects_from_config(config_path):
+
+    config = get_config_from_path(config_path)
+    source_config = config["source"]
+    slit_config = config["slit"]
+    sensor_type = config["sensor"]["type"]
+    sensor_config = {
+        "mask_size": config["sensor"]["mask_size"],
+        "exposure_time": config["sensor"]["exposure_time"],
+        **config["sensor"][sensor_type],
+    }
+    options_config = config["options"]
+
+    source = SourceScreen(**source_config)
+    slit = SlitScreen(**slit_config)
+    sensor = SensorScreen(**sensor_config)
+    options = Options(**options_config)
+
+    return source, slit, sensor, options
+
 
 class MaskGenerator:
-    def __init__(self, mask_config: dict):
+    def __init__(self, **mask_config):
         self.mask_size = mask_config["mask_size"]
         self.mask_width = mask_config["mask_width"]
         self.mask_type = mask_config["mask_type"]
@@ -115,90 +138,127 @@ class MaskGenerator:
         return mask
 
 
+@dataclass
+class SourceScreen:
+    mask_size: list
+    mask_type: str
+    mask_width: int
+    photons_per_pixel: int
+
+    def __post_init__(self) -> None:
+
+        self.mask_generator = MaskGenerator(
+            mask_size=self.mask_size,
+            mask_type=self.mask_type,
+            mask_width=self.mask_width,
+        )
+        self.mask = self.mask_generator.generate_mask()
+        self.screen = self.mask * self.photons_per_pixel
+
+
+@dataclass
+class SlitScreen:
+    mask_size: list
+    mask_type: str
+    mask_width: int
+
+    def __post_init__(self) -> None:
+
+        self.mask_generator = MaskGenerator(
+            mask_size=self.mask_size,
+            mask_type=self.mask_type,
+            mask_width=self.mask_width,
+        )
+        self.mask = self.mask_generator.generate_mask()
+
+
+@dataclass
+class SensorScreen:
+    mask_size: list
+    readout_noise: float
+    dark_current: float
+    exposure_time: float
+
+    def __post_init__(self) -> None:
+        self.screen = np.zeros(self.mask_size)
+        self.noise_matrix = np.zeros(self.mask_size)
+        self.dark_current_noise = self.dark_current * self.exposure_time
+
+
+@dataclass
+class Options:
+    name: str
+    add_noise: bool
+    source_to_slit_distance: float
+    slit_to_sensor_distance: float
+    inter_pixel_distance: float
+    theta_bounds: list
+    phi_bounds: list
+    random_seed: int
+
+    def __post_init__(self) -> None:
+
+        self.theta_bounds = np.array(self.theta_bounds)
+        self.phi_bounds = np.array(self.phi_bounds)
+        self.theta_bounds = self.theta_bounds * np.pi / 180
+        self.phi_bounds = self.phi_bounds * np.pi / 180
+
+        self.source_to_sensor_distance = (
+            self.source_to_slit_distance + self.slit_to_sensor_distance
+        )
+
+
 class CodApSimulator:
-    def __init__(self, config_path):
+    def __init__(
+        self,
+        options: Options,
+        source: SourceScreen,
+        slit: SlitScreen,
+        sensor: SensorScreen,
+    ):
 
         # Initializing attributes.
-        self.config_path = config_path
-        self.config = get_config_from_path(config_path)
-        self.name = self.config["name"]
-        self.options = self.config["options"]
+        self.options = options
+        self.source = source
+        self.slit = slit
+        self.sensor = sensor
 
-        self.n_photons = self.options["photons_per_pixel"]
-        self.source2slit_dist = self.options["source_to_slit_distance"]
-        self.slit2sensor_dist = self.options["slit_to_sensor_distance"]
-        self.source2sensor_dist = self.source2slit_dist + self.slit2sensor_dist
-        self.pixel_separation = self.options["inter_pixel_distance"]
-        self.theta_bounds = np.array(self.options['thetha_bounds'], dtype=float)
-        self.phi_bounds = np.array(self.options['phi_bounds'], dtype=float)
-
-        self.sensor_type = self.options["sensor_type"]
-        self.noise = self.config[self.sensor_type]
-        self.readout_noise = self.noise["readout_noise"]
-        self.dark_current_noise = self.noise['dark_current'] * self.options['exposure_time']
         self.saving_dir = self.get_path_to_save()
-        self.rng = np.random.default_rng(seed=self.options["random_seed"])
-
-        # Converting the bounds to radians.
-        self.theta_bounds *= (np.pi / 180)
-        self.phi_bounds *= (np.pi / 180)
-
-        # Generating the masks, using the MaskGenerator class.
-        self.source_mask_generator = MaskGenerator(self.config["source"])
-        self.source_mask = self.source_mask_generator.generate_mask()
-
-        self.slit_mask_generator = MaskGenerator(self.config["slit"])
-        self.slit_mask = self.slit_mask_generator.generate_mask()
-
-        self.source_screen = self.source_mask * self.n_photons
-        self.sensor_screen = np.zeros(self.options["sensor_size"])
-        self.noise_matrix = np.zeros(self.sensor_screen.shape)
-
-    def play_simulation(self):
-        """Plays the simulation"""
-        print("Simulating the propagation of photons through the slit...")
-        self.make_image()
-        if self.options["add_noise"]:
-            print('Adding noise to the image...')
-            self.add_noise()
-        print("Done!")
-        print("Saving results...")
-        self.save_results()
-        print("Done!")
+        self.rng = np.random.default_rng(seed=options.random_seed)
 
     def get_path_to_save(self):
         """Returns the path to save the results"""
 
         os.makedirs("results", exist_ok=True)
-        saving_dir = os.path.join("results", self.name)
+        saving_dir = os.path.join("results", self.options.name)
         os.makedirs(saving_dir, exist_ok=True)
         return saving_dir
 
-    def save_results(self):
+    def save_results(self, config_path: str):
         """Saves the results of the simulation"""
-        np.save(os.path.join(self.saving_dir, "image.npy"), self.sensor_screen)
+        np.save(os.path.join(self.saving_dir, "image.npy"), self.sensor.screen)
         # Copy the config file to the results folder
-        shutil.copy(self.config_path, self.saving_dir)
+        shutil.copy(config_path, self.saving_dir)
 
     def add_noise(self):
         """Adds noise to the image"""
-        self.noise_matrix += self.rng.poisson(
-            lam=self.dark_current_noise, size=self.sensor_screen.shape
+        self.sensor.noise_matrix += self.rng.poisson(
+            lam=self.sensor.dark_current_noise, size=self.sensor.screen.shape
         )
-        self.noise_matrix += np.round(
+        self.sensor.noise_matrix += np.round(
             self.rng.normal(
-                loc=0, scale=self.readout_noise, size=self.sensor_screen.shape
+                loc=0, scale=self.sensor.readout_noise, size=self.sensor.screen.shape
             )
         )
-        self.sensor_screen += self.noise_matrix
+        self.sensor.screen += self.sensor.noise_matrix
 
     def make_image(self):
         """Simulates the propagation of photons through the slit"""
 
         # Find the coordinates of non-zero elements in the source mask
-        i_coords, j_coords = np.where(self.source_mask == 1)
+        i_coords, j_coords = np.where(self.source.mask == 1)
 
-        for _ in tqdm(range(self.n_photons)):
+        for _ in tqdm(range(self.source.photons_per_pixel)):
             # Sample the angles for the photon
             theta, phi = self.sample_angles()
 
@@ -222,13 +282,13 @@ class CodApSimulator:
                     )
                 ).T,
                 np.vstack((photon_theta[valid_photons], photon_phi[valid_photons])).T,
-                self.source2sensor_dist,
+                self.options.source_to_sensor_distance,
             )
 
             # Increment the sensor screen for valid landing positions
             for sensor_position in landing_positions:
                 try:
-                    self.sensor_screen[sensor_position[0], sensor_position[1]] += 1
+                    self.sensor.screen[sensor_position[0], sensor_position[1]] += 1
                 except IndexError:
                     pass
 
@@ -249,26 +309,26 @@ class CodApSimulator:
 
         # Compute the intersection pixel coordinates for all photons
         intersection_pixel_coordinates = self.compute_landing_pixels(
-            positions, angles, self.source2slit_dist
+            positions, angles, self.options.source_to_slit_distance
         )
 
         # Check if the intersection coordinates are within the slit dimensions for all photons
         within_slit_bounds = (
             (intersection_pixel_coordinates[:, 0] >= 0)
-            & (intersection_pixel_coordinates[:, 0] < self.slit_mask.shape[0])
+            & (intersection_pixel_coordinates[:, 0] < self.slit.mask.shape[0])
             & (intersection_pixel_coordinates[:, 1] >= 0)
-            & (intersection_pixel_coordinates[:, 1] < self.slit_mask.shape[1])
+            & (intersection_pixel_coordinates[:, 1] < self.slit.mask.shape[1])
         )
 
         # Create a boolean array of the same length as positions, initialized with False
         passes_through = np.zeros(positions.shape[0], dtype=bool)
 
         # Set True for the photons that are within slit bounds and the corresponding
-        # slit_mask value is 1
+        # slit.mask value is 1
         valid_indices = np.where(within_slit_bounds)[0]
         valid_coords = intersection_pixel_coordinates[valid_indices]
         passes_through[valid_indices] = (
-            self.slit_mask[valid_coords[:, 0], valid_coords[:, 1]] == 1
+            self.slit.mask[valid_coords[:, 0], valid_coords[:, 1]] == 1
         )
 
         return passes_through
@@ -292,8 +352,8 @@ class CodApSimulator:
         # Create the origin pixel vectors for all pixels.
         origin_vectors = np.column_stack(
             (
-                positions[:, 0] * self.pixel_separation,
-                positions[:, 1] * self.pixel_separation,
+                positions[:, 0] * self.options.inter_pixel_distance,
+                positions[:, 1] * self.options.inter_pixel_distance,
                 positions[:, 2],
             )
         )
@@ -307,41 +367,65 @@ class CodApSimulator:
         )
         # Compute the pixel coordinates of the intersections for all photons.
         intersection_pixel_coordinates = (
-            intersection_vectors[:, :2] / self.pixel_separation
+            intersection_vectors[:, :2] / self.options.inter_pixel_distance
         ).astype(int)
         return intersection_pixel_coordinates
 
     def sample_angles(self):
         """Samples the angles of the photons from a uniform distribution"""
-        theta = self.rng.uniform(*self.theta_bounds, self.source_mask.shape)
-        phi = self.rng.uniform(*self.phi_bounds, self.source_mask.shape)
+        theta = self.rng.uniform(*self.options.theta_bounds, self.source.mask.shape)
+        phi = self.rng.uniform(*self.options.phi_bounds, self.source.mask.shape)
         return theta, phi
 
+
+def play_simulation(simulator: CodApSimulator, config_path: str):
+    """Plays the simulation"""
+    print("Simulating the propagation of photons through the slit...")
+
+    tic = timeit.default_timer()
+    simulator.make_image()
+    toc = timeit.default_timer()
+    print(f"Done! time: {toc-tic: .2f}s")
+    if simulator.options.add_noise:
+        print("Adding noise to the image...")
+        tic = timeit.default_timer()
+        simulator.add_noise()
+        toc = timeit.default_timer()
+        print(f"Done! time: {toc-tic: .2f}s")
+    print("Done!")
+    print("Saving results...")
+    tic = timeit.default_timer()
+    simulator.save_results(config_path)
+    toc = timeit.default_timer()
+    print(f"Done! time: {toc-tic: .2f}s")
 
 def main():
     """Main function of the script. Parses the arguments and runs the simulation."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="Path to the config file")
+    parser.add_argument(
+        "--config", type=str, required=True, help="Path to the config file"
+    )
     args = parser.parse_args()
     config_path = args.config
-    simulator = CodApSimulator(config_path)
-    simulator.play_simulation()
+    source, slit, sensor, options = get_objects_from_config(config_path=config_path)
+    simulator = CodApSimulator(source=source, slit=slit, sensor=sensor, options=options)
+    play_simulation(simulator=simulator, config_path=config_path)
 
     # Plot the results
     fig = plt.figure(figsize=(30, 10))
     plt.subplot(1, 3, 1)
-    vmin, vmax = 0, float(np.max(simulator.source_screen))
-    im = plt.imshow(simulator.source_screen, vmin=vmin, vmax=vmax)
+    vmin, vmax = 0, float(np.max(simulator.source.screen))
+    im = plt.imshow(simulator.source.screen, vmin=vmin, vmax=vmax)
     cbar_ax = fig.add_axes([0.05, 0.15, 0.01, 0.7])
     fig.colorbar(im, cax=cbar_ax)
     plt.title("Source Photons")
     plt.subplot(1, 3, 2)
-    plt.imshow(simulator.slit_mask, cmap="binary_r")
+    plt.imshow(simulator.slit.mask, cmap="binary_r")
     plt.title("Slit screen")
     plt.subplot(1, 3, 3)
-    vmin, vmax = 0, float(np.max(simulator.sensor_screen))
-    im = plt.imshow(simulator.sensor_screen, vmin=vmin, vmax=vmax)
-    plt.imshow(simulator.sensor_screen, vmin=vmin, vmax=vmax)
+    vmin, vmax = 0, float(np.max(simulator.sensor.screen))
+    im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax)
+    plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax)
     cbar_ax = fig.add_axes([0.95, 0.15, 0.01, 0.7])
     fig.colorbar(im, cax=cbar_ax)
     plt.title("Detected Photons")
@@ -350,9 +434,10 @@ def main():
 
     # plot the noise matrix
     plt.figure(figsize=(10, 10))
-    plt.imshow(simulator.noise_matrix)
+    plt.imshow(simulator.sensor.noise_matrix)
     plt.colorbar()
     plt.savefig(os.path.join(simulator.saving_dir, "noise_matrix.png"))
+
 
 if __name__ == "__main__":
     main()
