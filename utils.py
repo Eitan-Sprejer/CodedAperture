@@ -245,11 +245,10 @@ class CodApSimulator:
         self.sensor.noise_matrix += self.rng.poisson(
             lam=self.sensor.dark_current_noise, size=self.sensor.screen.shape
         )
-        self.sensor.noise_matrix += np.round(
-            self.rng.normal(
-                loc=0, scale=self.sensor.readout_noise, size=self.sensor.screen.shape
-            )
+        self.sensor.noise_matrix += self.rng.normal(
+            loc=0, scale=self.sensor.readout_noise, size=self.sensor.screen.shape
         )
+
         self.sensor.screen += self.sensor.noise_matrix
 
     def make_image(self):
@@ -438,6 +437,11 @@ def main():
     plt.colorbar()
     plt.savefig(os.path.join(simulator.saving_dir, "noise_matrix.png"))
 
-
+    plt.figure(figsize=(10, 10))
+    plt.hist(
+        simulator.sensor.screen.flatten(),
+        bins=np.arange(0, np.round(np.max(simulator.sensor.screen)), 1)
+    )
+    plt.savefig(os.path.join(simulator.saving_dir, "charge_histogram.png"))
 if __name__ == "__main__":
     main()
