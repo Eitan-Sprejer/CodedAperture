@@ -8,9 +8,9 @@ from tqdm import tqdm
 import argparse
 import matplotlib.pyplot as plt
 from scipy import ndimage
-from scipy.signal import convolve2d
+from scipy.signal import convolve2d, correlate
 import pickle
-
+import sys
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["figure.dpi"] = 120
@@ -38,6 +38,21 @@ class CodApSimulator:
 
         self.saving_dir = self.get_path_to_save()
         self.rng = np.random.default_rng(seed=options.random_seed)
+
+        # Check whether the saving directory is empty, not to override previous results.
+        if os.listdir(self.saving_dir):
+            print("The chosen directory is not empty:")
+            print(self.saving_dir)
+            ans = input(
+                "Do you want to continue, override the previous results? (y/n)"
+            )
+            if ans == "n":
+                print("Exiting...")
+                sys.exit()
+            elif ans == "y":
+                print("Continuing...")
+            else:
+                raise ValueError("Invalid answer")
 
     def get_path_to_save(self):
         """Returns the path to save the results"""
@@ -80,9 +95,10 @@ class CodApSimulator:
         if self.slit.mask_type == 'mura':
             print('decoding mura image...')
             self.decode_mura_image()
-            self.decoded_image = ndimage.convolve(self.sensor.screen, self.decoding_pattern)
+            # self.decoded_image = ndimage.convolve(self.sensor.screen, self.decoding_pattern)
             # self.decoded_image = convolve2d(self.sensor.screen, self.decoding_pattern)
-            # self.decoded_image = np.convolve(self.sensor.screen.flatten(), self.decoding_pattern.flatten())
+            self.decoded_image = convolve2d(self.sensor.screen, self.decoding_pattern, boundary='fill', mode='same')
+            # self.decoded_image = correlate(self.sensor.screen, self.decoding_pattern, mode='same')
             # self.decoded_image = self.decoded_image.reshape(*self.sensor.screen.shape)
 
     def make_image(self):
@@ -244,18 +260,26 @@ def play_simulation(simulator: CodApSimulator, config_path: str):
     print("Saving results...")
     simulator.save_results(config_path)
 
-def main():
-    """Main function of the script. Parses the arguments and runs the simulation."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config", type=str, required=True, help="Path to the config file"
-    )
-    args = parser.parse_args()
-    config_path = args.config
-    source, slit, sensor, options = get_objects_from_config(config_path=config_path)
-    simulator = CodApSimulator(source=source, slit=slit, sensor=sensor, options=options)
-    play_simulation(simulator=simulator, config_path=config_path)
+def plot_results(simulator: CodApSimulator):
+    """
+    Plots the results of the simulation.
 
+    Parameters
+    ----------
+    simulator: CodApSimulator
+        The simulator object.
+
+    Saves
+    -----
+    results.png: A 2x2 grid with plots of the source, slit, and sensor screen,
+    and the decoded image, if any.
+
+    noise_matrix.png: A plot of the added noise.
+
+    decoding_pattern.png: A plot of the decoding pattern.
+
+    charge_histogram.png: A histogram of the charge values in the sensor screen.
+    """
     # Plot the results
     fig = plt.figure(figsize=(20, 20))
     plt.subplot(2, 2, 1)
@@ -268,13 +292,13 @@ def main():
     plt.imshow(simulator.slit.mask, cmap="binary_r")
     plt.title("Slit screen")
     plt.subplot(2, 2, 3)
-    vmin, vmax = 0, float(np.max(simulator.sensor.screen))
+    vmin, vmax = 0, float(np.percentile(simulator.sensor.screen, 99.9))
     im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax)
     cbar_ax = fig.add_axes([0.05, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
     plt.title("Detected Photons")
     plt.subplot(2, 2, 4)
-    vmin, vmax = 0, float(np.max(simulator.decoded_image))
+    vmin, vmax = 0, float(np.percentile(simulator.decoded_image, 99.9))
     im = plt.imshow(simulator.decoded_image, vmin=vmin, vmax=vmax)
     cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
@@ -299,8 +323,25 @@ def main():
     plt.imshow(simulator.decoding_pattern)
     plt.savefig(os.path.join(simulator.saving_dir, "decoding_pattern.png"))
 
-    # Save simulator object as a pickle
 
+def main():
+    """
+    Main function of the script. Parses the arguments, runs the simulation, and
+    saves the results.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config", type=str, required=True, help="Path to the config file"
+    )
+    args = parser.parse_args()
+    config_path = args.config
+    source, slit, sensor, options = get_objects_from_config(config_path=config_path)
+    simulator = CodApSimulator(source=source, slit=slit, sensor=sensor, options=options)
+
+    play_simulation(simulator=simulator, config_path=config_path)
+    plot_results(simulator)
+
+    # Save simulator object as a pickle file.
     with open(os.path.join(simulator.saving_dir, "simulator.pkl"), "wb") as f:
         pickle.dump(simulator, f)
 
