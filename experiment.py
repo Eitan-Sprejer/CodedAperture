@@ -9,6 +9,7 @@ import argparse
 import matplotlib.pyplot as plt
 from scipy import ndimage
 from scipy.signal import convolve2d
+import pickle
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
@@ -260,8 +261,8 @@ def main():
     plt.subplot(2, 2, 1)
     vmin, vmax = 0, float(np.max(simulator.source.screen))
     im = plt.imshow(simulator.source.screen, vmin=vmin, vmax=vmax)
-    # cbar_ax = fig.add_axes([0.05, 0.15, 0.01, 0.7])
-    # fig.colorbar(im, cax=cbar_ax)
+    cbar_ax = fig.add_axes([0.05, 0.54, 0.01, 0.3])
+    fig.colorbar(im, cax=cbar_ax)
     plt.title("Source Photons")
     plt.subplot(2, 2, 2)
     plt.imshow(simulator.slit.mask, cmap="binary_r")
@@ -269,13 +270,13 @@ def main():
     plt.subplot(2, 2, 3)
     vmin, vmax = 0, float(np.max(simulator.sensor.screen))
     im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax)
-    # cbar_ax = fig.add_axes([0.95, 0.15, 0.01, 0.7])
-    # fig.colorbar(im, cax=cbar_ax)
+    cbar_ax = fig.add_axes([0.05, 0.12, 0.01, 0.3])
+    fig.colorbar(im, cax=cbar_ax)
     plt.title("Detected Photons")
     plt.subplot(2, 2, 4)
     vmin, vmax = 0, float(np.max(simulator.decoded_image))
     im = plt.imshow(simulator.decoded_image, vmin=vmin, vmax=vmax)
-    cbar_ax = fig.add_axes([0.95, 0.15, 0.01, 0.7])
+    cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
     plt.title("Decoded Image")
     # Save figure
@@ -297,6 +298,11 @@ def main():
     plt.figure(figsize=(10, 10))
     plt.imshow(simulator.decoding_pattern)
     plt.savefig(os.path.join(simulator.saving_dir, "decoding_pattern.png"))
+
+    # Save simulator object as a pickle
+
+    with open(os.path.join(simulator.saving_dir, "simulator.pkl"), "wb") as f:
+        pickle.dump(simulator, f)
 
 if __name__ == "__main__":
     main()
