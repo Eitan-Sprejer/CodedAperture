@@ -247,5 +247,5 @@ class MaskGenerator:
 
     def generate_apertures_mask(self):
         """Generates a mask from the apertures library"""
-        mura = ca.mura(rank=11, tile=None, center=True)
+        mura = ca.mura(rank=4, tile=None, center=True)
         return mura.aperture
