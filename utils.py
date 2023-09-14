@@ -10,6 +10,7 @@ import timeit
 import codedapertures as ca
 from scipy import ndimage
 from scipy.signal import convolve2d
+from typing import Union
 
 from decoding_algorythms import mura_decoding_algorythm
 
@@ -55,6 +56,7 @@ class SourceScreen:
 
     def __post_init__(self) -> None:
 
+        self.mask_size = np.array(self.mask_size)
         self.mask_generator = MaskGenerator(
             mask_size=self.mask_size,
             mask_type=self.mask_type,
@@ -71,7 +73,8 @@ class SlitScreen:
     mask_width: int
 
     def __post_init__(self) -> None:
-
+        
+        self.mask_size = np.array(self.mask_size)
         self.mask_generator = MaskGenerator(
             mask_size=self.mask_size,
             mask_type=self.mask_type,
@@ -88,6 +91,8 @@ class SensorScreen:
     exposure_time: float
 
     def __post_init__(self) -> None:
+        
+        self.mask_size = np.array(self.mask_size)
         self.screen = np.zeros(self.mask_size)
         self.noise_matrix = np.zeros(self.mask_size)
         self.dark_current_noise = self.dark_current * self.exposure_time
@@ -114,6 +119,34 @@ class Options:
         self.source_to_sensor_distance = (
             self.source_to_slit_distance + self.slit_to_sensor_distance
         )
+
+def coordinates2positions(
+    mask_shape: np.ndarray,
+    options: Options,
+    coordinates: np.ndarray
+):
+    """
+    Converts the coordinates of a pixel to its position in the source or slit plane.
+    """
+
+    return (
+        (coordinates - mask_shape / 2) # Center the position coordinates.
+        * options.inter_pixel_distance
+    )
+
+def positions2coordinates(
+    mask_shape: np.ndarray,
+    options: Options,
+    positions: np.ndarray
+):
+    """
+    Converts the positions of a pixel to its coordinates in the source or slit plane.
+    """
+
+    return (
+        (positions / options.inter_pixel_distance) # Center the position coordinates.
+        + mask_shape / 2
+    ).astype(int)
 
 class MaskGenerator:
     def __init__(self, **mask_config):
