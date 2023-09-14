@@ -2,7 +2,7 @@ import os
 import shutil
 import json
 from decoding_algorythms import mura_decoding_algorythm
-from utils import get_objects_from_config, Options, SourceScreen, SlitScreen, SensorScreen
+from utils import get_objects_from_config, positions2coordinates, coordinates2positions, Options, SourceScreen, SlitScreen, SensorScreen
 import numpy as np
 from tqdm import tqdm
 import argparse
@@ -124,13 +124,13 @@ class CodApSimulator:
                 except IndexError:
                     pass
 
-    def passes_through_slit(self, positions, angles):
+    def passes_through_slit(self, coordinates, angles):
         """
         Returns a boolean array indicating whether each photon passes through the slit.
 
         Parameters:
-        positions: np.array
-            The positions of the pixels in the source mask for all photons.
+        coordinates: np.array
+            The coordinates of the pixels in the source mask for all photons.
         angles: np.array
             The angles of the director vectors for all photons.
 
@@ -141,7 +141,7 @@ class CodApSimulator:
 
         # Compute the intersection pixel coordinates for all photons
         intersection_pixel_coordinates = self.compute_landing_pixels(
-            positions, angles, self.options.source_to_slit_distance
+            coordinates, angles, self.options.source_to_slit_distance
         )
 
         # Check if the intersection coordinates are within the slit dimensions for all photons
@@ -153,7 +153,7 @@ class CodApSimulator:
         )
 
         # Create a boolean array of the same length as positions, initialized with False
-        passes_through = np.zeros(positions.shape[0], dtype=bool)
+        passes_through = np.zeros(coordinates.shape[0], dtype=bool)
 
         # Set True for the photons that are within slit bounds and the corresponding
         # slit.mask value is 1
@@ -165,7 +165,7 @@ class CodApSimulator:
 
         return passes_through
 
-    def compute_landing_pixels(self, positions, angles, z_distance):
+    def compute_landing_pixels(self, coordinates, angles, z_distance):
         """
         Computes the pixels in the sensor screen where the photons land.
 
@@ -181,12 +181,19 @@ class CodApSimulator:
 
         theta, phi = angles[:, 0], angles[:, 1]
 
+        # Convert the coordinates on the source to the x-y positions
+        positions = coordinates2positions(
+            mask_shape=np.array(self.source.mask_size),
+            options=self.options,
+            coordinates=coordinates[:, :2],
+        )
+
         # Create the origin pixel vectors for all pixels.
         origin_vectors = np.column_stack(
             (
-                positions[:, 0] * self.options.inter_pixel_distance,
-                positions[:, 1] * self.options.inter_pixel_distance,
-                positions[:, 2],
+                positions[:, 0],
+                positions[:, 1],
+                coordinates[:, 2],
             )
         )
         # Create the unit direction pixel vectors for all photons.
@@ -198,9 +205,22 @@ class CodApSimulator:
             z_distance / unit_direction_vectors[:, 2][:, np.newaxis]
         )
         # Compute the pixel coordinates of the intersections for all photons.
-        intersection_pixel_coordinates = (
-            intersection_vectors[:, :2] / self.options.inter_pixel_distance
-        ).astype(int)
+        if z_distance == self.options.source_to_sensor_distance:
+            intersection_pixel_coordinates = positions2coordinates(
+                mask_shape=self.sensor.mask_size,
+                options=self.options,
+                positions=intersection_vectors[:, :2],
+            )
+        elif z_distance == self.options.source_to_slit_distance:
+            intersection_pixel_coordinates = positions2coordinates(
+                mask_shape=self.slit.mask_size,
+                options=self.options,
+                positions=intersection_vectors[:, :2],
+            )
+        else:
+            raise ValueError(
+                "z_distance must be either source_to_sensor_distance or source_to_slit_distance"
+            )
         return intersection_pixel_coordinates
 
     def sample_angles(self):
@@ -218,7 +238,6 @@ def play_simulation(simulator: CodApSimulator, config_path: str):
     if simulator.options.add_noise:
         print("Adding noise to the image...")
         simulator.add_noise()
-    print('Decoding Image Generated...')
     simulator.decode_image()
     print("Done!")
     print("Saving results...")
@@ -271,7 +290,7 @@ def main():
     plt.figure(figsize=(10, 10))
     plt.hist(
         simulator.sensor.screen.flatten(),
-        bins=np.arange(0, np.round(np.max(simulator.sensor.screen)), 1)
+        bins=np.arange(0, np.round(np.max(simulator.sensor.screen)), 0.1)
     )
     plt.savefig(os.path.join(simulator.saving_dir, "charge_histogram.png"))
 
