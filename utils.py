@@ -165,7 +165,9 @@ class MaskGenerator:
         elif self.mask_type == "mura":
             return self.generate_apertures_mask()
         elif "pattern" in self.mask_type:
-            return self.load_pattern_slit()
+            return self.load_pattern_slit(folder = 'p')
+        elif "processed" in self.mask_type:
+            return self.load_pattern_slit(folder = 'pp')
         else:
             raise ValueError("Invalid mask type")
 
@@ -230,19 +232,32 @@ class MaskGenerator:
         ] = 0
         return mask
 
-    def load_pattern_slit(self):
-        path = f"patterns/{self.mask_type}.png"
-        # Load the png image as a mask matrix
-        try:
-            mask = plt.imread(path)
-        except FileNotFoundError as exc:
-            raise FileNotFoundError(
-                f"File {path} not found. Check if it's correct"
-            ) from exc
-        mask = mask[:, :, 3]
-        # Resize the mask to the desired size
-        mask = np.resize(mask, self.mask_size)
-        plt.show()
+    def load_pattern_slit(self, folder):
+        if folder == 'p':
+            path = f"patterns/{self.mask_type}.png"
+            # Load the png image as a mask matrix
+            try:
+                mask = plt.imread(path)
+            except FileNotFoundError as exc:
+                raise FileNotFoundError(
+                    f"File {path} not found. Check if it's correct"
+                ) from exc
+            mask = mask[:, :, 3]
+            # Resize the mask to the desired size
+            mask = np.resize(mask, self.mask_size)
+            plt.show()
+        elif folder == 'pp':
+            path = f"processed_patterns/{self.mask_type}.png"
+            # Load the png image as a mask matrix
+            try:
+                mask = plt.imread(path)
+            except FileNotFoundError as exc:
+                raise FileNotFoundError(
+                    f"File {path} not found. Check if it's correct"
+                ) from exc
+            # Resize the mask to the desired size
+            mask = np.resize(mask, self.mask_size)
+            plt.show()
         return mask
 
     def generate_apertures_mask(self):

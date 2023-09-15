@@ -12,7 +12,7 @@ import numpy as np
 def process_image(file_name, type = 'png', target_size=(100, 100), threshold = 90, invert = False):
     try:
         # Open the image using Pillow
-        image = Image.open(f'patterns/{file_name}.{type}')
+        image = Image.open(f'exp_pics/{file_name}.{type}')
 
         # Resize the image to the specified dimensions
         image = image.resize(target_size, Image.ANTIALIAS)
@@ -41,7 +41,7 @@ def process_image(file_name, type = 'png', target_size=(100, 100), threshold = 9
         plt.show()
 
         binary_image_sv = Image.fromarray((binary_image*255).astype(np.uint8))
-        binary_image_sv.save(f'patterns/{file_name}_pattern.png')
+        binary_image_sv.save(f'processed_patterns/{file_name}_processed.png')
 
         return image_array, binary_image
 

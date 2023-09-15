@@ -1,6 +1,6 @@
 {
     "options": {
-        "name": "phi unveven slit_size and sensor_size",
+        "name": "Test 1",
         "add_noise": true,
         "source_to_slit_distance": 200,
         "slit_to_sensor_distance": 200,
@@ -11,17 +11,17 @@
     },
     "source": {
         "mask_size": [100, 100],
-        "mask_type": "phi",
+        "mask_type": "lambda_letter_srce_processed",
         "mask_width": 10,
         "photons_per_pixel": 50000
     },
     "slit": {
-        "mask_size": [125, 160],
+        "mask_size": [180, 120],
         "mask_type": "pinhole",
         "mask_width": 5
     },
     "sensor": {
-        "mask_size": [125, 160],
+        "mask_size": [200, 200],
         "type": "skipper",
         "exposure_time": 5000,
         "skipper": {
