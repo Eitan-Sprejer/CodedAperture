@@ -4,7 +4,6 @@ source and slit masks for the simulation. The images are first converted to gray
 and then reshaped to the desired size. The images are then saved as numpy arrays.
 """
 
-import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +30,8 @@ def process_image(file_name, type = 'png', target_size=(100, 100), threshold = 9
             binary_image = 1 - binary_image
 
         #plot both images to check if the threshold is good enough
-        plt.figure(figsize=(12, 12))
+        plt.figure(figsize=(6, 6))
+        plt.suptitle('Image Preprocessing')
         plt.subplot(2, 2, 1)
         plt.imshow(image_array, cmap = 'gray')
         plt.title("Image Array")
@@ -40,10 +40,10 @@ def process_image(file_name, type = 'png', target_size=(100, 100), threshold = 9
         plt.title(f"Binary Image - Threshold: {threshold}")
         plt.show()
 
-        binary_image_sv = Image.fromarray((binary_image*255).astype(np.uint8))
-        binary_image_sv.save(f'processed_patterns/{file_name}_processed.png')
+        #binary_image_sv = Image.fromarray((binary_image*255).astype(np.uint8))
+        #binary_image_sv.save(f'processed_patterns/{file_name}_processed.png')
 
-        return image_array, binary_image
+        return binary_image
 
     except Exception as e:
         print(f"Error processing image {file_name}: {e}")

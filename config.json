@@ -1,9 +1,9 @@
 {
     "options": {
-        "name": "Test 1",
+        "name": "Test 2",
         "add_noise": true,
-        "source_to_slit_distance": 200,
-        "slit_to_sensor_distance": 200,
+        "source_to_slit_distance": 180,
+        "slit_to_sensor_distance": 319,
         "inter_pixel_distance": 1,
         "theta_bounds": [0, 360],
         "phi_bounds": [0, 90],
@@ -11,17 +11,17 @@
     },
     "source": {
         "mask_size": [100, 100],
-        "mask_type": "lambda_letter_srce_processed",
+        "mask_type": "lambda_letter_srce_exp",
         "mask_width": 10,
         "photons_per_pixel": 50000
     },
     "slit": {
-        "mask_size": [180, 120],
-        "mask_type": "pinhole",
+        "mask_size": [90, 90],
+        "mask_type": "lambda_letter_pinhole_exp",
         "mask_width": 5
     },
     "sensor": {
-        "mask_size": [200, 200],
+        "mask_size": [300, 300],
         "type": "skipper",
         "exposure_time": 5000,
         "skipper": {

@@ -11,6 +11,8 @@ import codedapertures as ca
 from scipy import ndimage
 from scipy.signal import convolve2d
 from typing import Union
+from image_preprocessing import process_image
+from PIL import Image
 
 from decoding_algorythms import mura_decoding_algorythm
 
@@ -166,8 +168,8 @@ class MaskGenerator:
             return self.generate_apertures_mask()
         elif "pattern" in self.mask_type:
             return self.load_pattern_slit(folder = 'p')
-        elif "processed" in self.mask_type:
-            return self.load_pattern_slit(folder = 'pp')
+        elif "exp" in self.mask_type:
+            return self.load_pattern_slit(folder = 'exp')
         else:
             raise ValueError("Invalid mask type")
 
@@ -246,17 +248,15 @@ class MaskGenerator:
             # Resize the mask to the desired size
             mask = np.resize(mask, self.mask_size)
             plt.show()
-        elif folder == 'pp':
-            path = f"processed_patterns/{self.mask_type}.png"
+        elif folder == 'exp':
+            file_name = self.mask_type
             # Load the png image as a mask matrix
             try:
-                mask = plt.imread(path)
+                mask = process_image(file_name= file_name, target_size=self.mask_size, invert=True)
             except FileNotFoundError as exc:
                 raise FileNotFoundError(
                     f"File {path} not found. Check if it's correct"
                 ) from exc
-            # Resize the mask to the desired size
-            mask = np.resize(mask, self.mask_size)
             plt.show()
         return mask
 
