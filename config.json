@@ -1,29 +1,29 @@
 {
     "options": {
-        "name": "Test 2",
+        "name": "lambda | smile | skipper",
         "add_noise": true,
         "source_to_slit_distance": 180,
         "slit_to_sensor_distance": 319,
-        "inter_pixel_distance": 1,
+        "inter_pixel_distance": 0.05,
         "theta_bounds": [0, 360],
-        "phi_bounds": [0, 90],
+        "phi_bounds": [0, 20],
         "random_seed": 42
     },
     "source": {
-        "mask_size": [100, 100],
-        "mask_type": "lambda_letter_srce_exp",
+        "mask_size": [200, 200],
+        "mask_type": "lambda_pattern",
         "mask_width": 10,
         "photons_per_pixel": 50000
     },
     "slit": {
-        "mask_size": [90, 90],
-        "mask_type": "lambda_letter_pinhole_exp",
+        "mask_size": [200, 200],
+        "mask_type": "smile_pattern",
         "mask_width": 5
     },
     "sensor": {
-        "mask_size": [300, 300],
+        "mask_size": [101, 101],
         "type": "skipper",
-        "exposure_time": 5000,
+        "exposure_time": 50,
         "skipper": {
             "readout_noise": 0.01,
             "dark_current": 0.00001
