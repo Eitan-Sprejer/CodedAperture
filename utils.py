@@ -30,6 +30,7 @@ def get_config_from_path(path) -> dict:
     return config
 
 def get_objects_from_config(config_path):
+    """Returns the objects needed for the simulation from a config file."""
 
     config = get_config_from_path(config_path)
     source_config = config["source"]
@@ -167,9 +168,9 @@ class MaskGenerator:
         elif self.mask_type == "mura":
             return self.generate_apertures_mask()
         elif "pattern" in self.mask_type:
-            return self.load_pattern_slit(folder = 'p')
+            return self.load_slit_from_pixelart()
         elif "exp" in self.mask_type:
-            return self.load_pattern_slit(folder = 'exp')
+            return self.load_slit_from_png_image()
         else:
             raise ValueError("Invalid mask type")
 
@@ -234,30 +235,42 @@ class MaskGenerator:
         ] = 0
         return mask
 
-    def load_pattern_slit(self, folder):
-        if folder == 'p':
-            path = f"patterns/{self.mask_type}.png"
-            # Load the png image as a mask matrix
-            try:
-                mask = plt.imread(path)
-            except FileNotFoundError as exc:
-                raise FileNotFoundError(
-                    f"File {path} not found. Check if it's correct"
-                ) from exc
-            mask = mask[:, :, 3]
-            # Resize the mask to the desired size
-            mask = np.resize(mask, self.mask_size)
-            plt.show()
-        elif folder == 'exp':
-            file_name = self.mask_type
-            # Load the png image as a mask matrix
-            try:
-                mask = process_image(file_name= file_name, target_size=self.mask_size, invert=True)
-            except FileNotFoundError as exc:
-                raise FileNotFoundError(
-                    f"File {path} not found. Check if it's correct"
-                ) from exc
-            plt.show()
+    def load_slit_from_pixelart(self):
+        """
+        Generates a mask from a pixel art image.
+        The image is first processed to be a binary mask.
+        """
+        path = f"patterns/{self.mask_type}.png"
+        # Load the png image as a mask matrix
+        try:
+            image = plt.imread(path)
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"File {path} not found. Check if it's correct"
+            ) from exc
+        
+        mask = image[:, :, 3]
+        # Check that the size is the correct one
+        if mask.shape != self.mask_size:
+            raise ValueError(
+                f"Mask size {mask.shape} does not match the specified size {self.mask_size}"
+            )
+        return mask
+
+    def load_slit_from_png_image(self):
+        """
+        Generates a mask from a png image.
+        The image is first processed to be a binary mask.
+        """
+        file_name = self.mask_type
+        path = f"exp_pics/{self.mask_type}.png"
+        # Load the png image as a mask matrix
+        try:
+            mask = process_image(file_name= file_name, target_size=self.mask_size, invert=True)
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"File {path} not found. Check if it's correct"
+            ) from exc
         return mask
 
     def generate_apertures_mask(self):
