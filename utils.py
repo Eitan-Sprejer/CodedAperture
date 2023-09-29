@@ -161,18 +161,17 @@ class MaskGenerator:
         """Generates a mask with the specified parameters"""
         if self.mask_type == "phi":
             return self.generate_phi_mask()
-        elif self.mask_type == "pinhole":
+        if self.mask_type == "pinhole":
             return self.generate_pinhole_mask()
-        elif self.mask_type == "frame":
+        if self.mask_type == "frame":
             return self.generate_frame_mask()
-        elif self.mask_type == "mura":
+        if self.mask_type == "mura":
             return self.generate_apertures_mask()
-        elif "pattern" in self.mask_type:
+        if "pattern" in self.mask_type:
             return self.load_slit_from_pixelart()
-        elif "exp" in self.mask_type:
+        if "exp" in self.mask_type:
             return self.load_slit_from_png_image()
-        else:
-            raise ValueError("Invalid mask type")
+        raise ValueError("Invalid mask type")
 
     def generate_phi_mask(self):
         """Generates a mask with a phi shape"""
@@ -248,10 +247,10 @@ class MaskGenerator:
             raise FileNotFoundError(
                 f"File {path} not found. Check if it's correct"
             ) from exc
-        
+
         mask = image[:, :, 3]
         # Check that the size is the correct one
-        if mask.shape != self.mask_size:
+        if not np.array_equal(mask.shape,self.mask_size):
             raise ValueError(
                 f"Mask size {mask.shape} does not match the specified size {self.mask_size}"
             )
@@ -264,9 +263,17 @@ class MaskGenerator:
         """
         file_name = self.mask_type
         path = f"exp_pics/{self.mask_type}.png"
+        # Check if the processed image is already saved
+        if os.path.isfile(path):
+            mask = np.array(Image.open(path))
+            if mask.shape != self.mask_size:
+                raise ValueError(
+                    f"Mask size {mask.shape} does not match the specified size {self.mask_size}"
+                )
+            return mask
         # Load the png image as a mask matrix
         try:
-            mask = process_image(file_name= file_name, target_size=self.mask_size, invert=True)
+            mask = process_image(file_name=file_name, target_size=self.mask_size, invert=True)
         except FileNotFoundError as exc:
             raise FileNotFoundError(
                 f"File {path} not found. Check if it's correct"
@@ -275,5 +282,5 @@ class MaskGenerator:
 
     def generate_apertures_mask(self):
         """Generates a mask from the apertures library"""
-        mura = ca.mura(rank=4, tile=None, center=True)
+        mura = ca.mura(rank=5, tile=None, center=True)
         return mura.aperture
