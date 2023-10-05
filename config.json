@@ -6,7 +6,8 @@
         "slit_to_sensor_distance": 319,
         "inter_pixel_distance": 0.05,
         "theta_bounds": [0, 360],
-        "phi_bounds": ["max_angle"],
+        "phi_bounds": [0, 90],
+        "automatic_angles": true,
         "random_seed": 42
     },
     "source": {
@@ -31,6 +32,10 @@
         "normal_ccd": {
             "readout_noise": 3,
             "dark_current": 1
+        },
+        "perfect": {
+            "readout_noise": 0,
+            "dark_current": 0
         }
     }
 }
