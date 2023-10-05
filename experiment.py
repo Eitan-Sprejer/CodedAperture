@@ -1,7 +1,7 @@
 import os
 import shutil
 import json
-from decoding_algorythms import mura_decoding_algorythm
+from decoding_algorythms import decode_image
 from utils import get_objects_from_config, positions2coordinates, coordinates2positions, Options, SourceScreen, SlitScreen, SensorScreen
 import numpy as np
 from tqdm import tqdm
@@ -84,27 +84,9 @@ class CodApSimulator:
 
         self.sensor.screen += self.sensor.noise_matrix
 
-    def decode_mura_image(self):
-        """Implements the algorythm for decoding a mura codedaperture generated image"""
-
-        for i in range(self.slit.mask.shape[0]):
-            for j in range(self.slit.mask.shape[1]):
-                cent_i = int(i - (self.slit.mask.shape[0]-1)/2)
-                cent_j = int(j - (self.slit.mask.shape[1]-1)/2)
-                self.decoding_pattern[i, j] = mura_decoding_algorythm(
-                    self.slit.mask[i, j], cent_i, cent_j
-                )
-
     def decode_image(self):
         """Decodes the final image generated on the sensor screen."""
-        if self.slit.mask_type == 'mura':
-            print('decoding mura image...')
-            self.decode_mura_image()
-            self.decoded_image = ndimage.convolve(self.sensor.screen, self.decoding_pattern, mode='wrap')
-            # self.decoded_image = convolve2d(self.sensor.screen, self.decoding_pattern)
-            # self.decoded_image = convolve2d(self.sensor.screen, self.decoding_pattern, boundary='fill', mode='same')
-            # self.decoded_image = correlate(self.sensor.screen, self.decoding_pattern, mode='same')
-            # self.decoded_image = self.decoded_image.reshape(*self.sensor.screen.shape)
+        self.decoding_pattern, self.decoded_image = decode_image(self.sensor, self.slit, self.slit.mask_type)
 
     def make_image(self):
         """Simulates the propagation of photons through the slit"""
