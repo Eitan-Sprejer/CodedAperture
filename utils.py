@@ -46,7 +46,7 @@ def get_objects_from_config(config_path):
     source = SourceScreen(**source_config)
     slit = SlitScreen(**slit_config)
     sensor = SensorScreen(**sensor_config)
-    options = Options(slit_config["mask_size"], **options_config)
+    options = Options(**options_config)
 
     return source, slit, sensor, options
 
@@ -103,7 +103,6 @@ class SensorScreen:
 
 @dataclass
 class Options:
-    mask_size: list
     name: str
     add_noise: bool
     source_to_slit_distance: float
@@ -111,6 +110,7 @@ class Options:
     inter_pixel_distance: float
     theta_bounds: list
     phi_bounds: list
+    automatic_angles: bool
     random_seed: int
 
 
@@ -118,22 +118,22 @@ class Options:
 
         self.theta_bounds = np.array(self.theta_bounds)
         self.phi_bounds = np.array(self.phi_bounds)
+        # Unit conversion to radians.
+        self.theta_bounds = self.theta_bounds * np.pi / 180
+        self.phi_bounds = self.phi_bounds * np.pi / 180
 
         self.source_to_sensor_distance = (
             self.source_to_slit_distance + self.slit_to_sensor_distance
         )
 
-    def set_angle_bounds(self):
-        if self.phi_bounds == "max_angle":
-            self.theta_bounds = self.theta_bounds * np.pi / 180
-            self.phi_bounds = (np.arctan(max(self.mask_size)/self.source_to_slit_distance)) * np.pi /180 # Define the max angle of phi as the max angle that will reach the mask from the center of the source
-        else:
-            self.theta_bounds = self.theta_bounds * np.pi / 180
-            self.phi_bounds = self.phi_bounds * np.pi / 180
-        raise ValueError("Invalid angle bounds")
-
-
-
+    def set_angle_bounds(self, source_size, slit_size):
+        
+        max_phi = max(
+            np.arctan((source_size[0] + slit_size[0]) / (2*self.source_to_slit_distance)),
+            np.arctan((source_size[1] + slit_size[1]) / (2*self.source_to_slit_distance))
+        )
+        # Set the maximum phi as the upper bound
+        self.phi_bounds[1] = max_phi
 
 def coordinates2positions(
     mask_shape: np.ndarray,
@@ -294,5 +294,5 @@ class MaskGenerator:
 
     def generate_apertures_mask(self):
         """Generates a mask from the apertures library"""
-        mura = ca.mura(rank=5, tile=None, center=True)
+        mura = ca.mura(rank=8, tile=None, center=True)
         return mura.aperture

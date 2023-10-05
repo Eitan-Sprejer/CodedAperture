@@ -33,6 +33,11 @@ class CodApSimulator:
         self.slit = slit
         self.sensor = sensor
 
+        # Post processing attributes
+        if options.automatic_angles:
+            options.set_angle_bounds(self.source.mask_size, self.slit.mask_size)
+
+        # Initializing results matrices
         self.decoding_pattern = np.zeros_like(self.slit.mask)
         self.decoded_image = np.zeros_like(self.source.mask)
 
