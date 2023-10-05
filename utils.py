@@ -14,8 +14,6 @@ from typing import Union
 from image_preprocessing import process_image
 from PIL import Image
 
-from decoding_algorythms import mura_decoding_algorythm
-
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["figure.dpi"] = 120
