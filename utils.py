@@ -46,7 +46,7 @@ def get_objects_from_config(config_path):
     source = SourceScreen(**source_config)
     slit = SlitScreen(**slit_config)
     sensor = SensorScreen(**sensor_config)
-    options = Options(**options_config)
+    options = Options(slit_config["mask_size"], **options_config)
 
     return source, slit, sensor, options
 
@@ -103,6 +103,7 @@ class SensorScreen:
 
 @dataclass
 class Options:
+    mask_size: list
     name: str
     add_noise: bool
     source_to_slit_distance: float
@@ -112,16 +113,27 @@ class Options:
     phi_bounds: list
     random_seed: int
 
+
     def __post_init__(self) -> None:
 
         self.theta_bounds = np.array(self.theta_bounds)
         self.phi_bounds = np.array(self.phi_bounds)
-        self.theta_bounds = self.theta_bounds * np.pi / 180
-        self.phi_bounds = self.phi_bounds * np.pi / 180
 
         self.source_to_sensor_distance = (
             self.source_to_slit_distance + self.slit_to_sensor_distance
         )
+
+    def set_angle_bounds(self):
+        if self.phi_bounds == "max_angle":
+            self.theta_bounds = self.theta_bounds * np.pi / 180
+            self.phi_bounds = (np.arctan(max(self.mask_size)/self.source_to_slit_distance)) * np.pi /180 # Define the max angle of phi as the max angle that will reach the mask from the center of the source
+        else:
+            self.theta_bounds = self.theta_bounds * np.pi / 180
+            self.phi_bounds = self.phi_bounds * np.pi / 180
+        raise ValueError("Invalid angle bounds")
+
+
+
 
 def coordinates2positions(
     mask_shape: np.ndarray,
