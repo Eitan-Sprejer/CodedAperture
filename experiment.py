@@ -1,3 +1,74 @@
+"""
+This script runs the simulation of the experiment. It takes a config file as an
+argument, which contains the parameters of the simulation. The script creates
+the objects needed for the simulation, runs the simulation, and saves the
+results.
+
+The config file must be a json file with the following structure:
+
+{
+    "source": {
+        "mask_size": [int, int],
+        "mask_type": str,
+        "mask_width": int,
+        "photons_per_pixel": int
+    },
+    "slit": {
+        "mask_size": [int, int],
+        "mask_type": str,
+        "mask_width": int
+    },
+    "sensor": {
+        "type": str,
+        "mask_size": [int, int],
+        "exposure_time": float,
+        "readout_noise": float,
+        "dark_current_noise": float,
+        "quantum_efficiency": float
+    },
+    "options": {
+        "name": str,
+        "source_to_slit_distance": float,
+        "source_to_sensor_distance": float,
+        "theta_bounds": [float, float],
+        "phi_bounds": [float, float],
+        "automatic_angles": bool,
+        "add_noise": bool,
+        "random_seed": int
+    }
+}
+
+The source, slit, sensor and Options objects are defined in utils.py. 
+The simulation is run using the CodApSimulator class defined in this script.
+
+The script saves the results in the results folder. This folder is
+created inside the 'results' folder, with the name specified in the config file.
+The results folder contains the following files:
+
+image.npy: The image generated on the sensor screen.
+
+config.json: The config file.
+
+results.png: A 2x2 grid with plots of the source, slit, and sensor screen,
+and the decoded image, if any.
+
+noise_matrix.png: A plot of the added noise.
+
+decoding_pattern.png: A plot of the decoding pattern.
+
+charge_histogram.png: A histogram of the charge values in the sensor screen.
+
+simulator.pkl: A pickle file containing the simulator object.
+
+
+Usage
+-----
+python experiment.py --config path/to/config.json
+
+or, if parallelization is required:
+python experiment.py --config path/to/config.json --parallelize
+"""
+
 import os
 import shutil
 import json
