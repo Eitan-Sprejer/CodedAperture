@@ -2,7 +2,7 @@ import os
 import shutil
 import json
 from decoding_algorythms import decode_image
-from utils import get_objects_from_config, positions2coordinates, coordinates2positions, Options, SourceScreen, SlitScreen, SensorScreen
+from utils import split_photons, get_objects_from_config, positions2coordinates, coordinates2positions, Options, SourceScreen, SlitScreen, SensorScreen
 import numpy as np
 from tqdm import tqdm
 import argparse
@@ -11,6 +11,8 @@ from scipy import ndimage
 from scipy.signal import convolve2d, correlate
 import pickle
 import sys
+import multiprocessing
+
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 plt.rcParams["figure.dpi"] = 120
@@ -86,15 +88,45 @@ class CodApSimulator:
 
     def decode_image(self):
         """Decodes the final image generated on the sensor screen."""
-        self.decoding_pattern, self.decoded_image = decode_image(self.sensor, self.slit, self.slit.mask_type)
+        self.decoding_pattern, self.decoded_image = decode_image(
+            self.sensor, self.slit, self.slit.mask_type
+        )
 
-    def make_image(self):
+    def make_image(self, parallelize: bool=False):
         """Simulates the propagation of photons through the slit"""
 
+        if parallelize:
+            num_photons_per_pixel = self.source.photons_per_pixel
+
+            num_processes = multiprocessing.cpu_count()  # Get the number of CPU cores
+
+            # Calculate the number of photons to simulate per process
+            photons_per_process = split_photons(num_photons_per_pixel, num_processes)
+
+            # Create a pool of worker processes
+            pool = multiprocessing.Pool(processes=num_processes)
+
+            # Prepare the arguments for the simulate_photons function
+            args_list = [(photons, pbar_pos) for pbar_pos, photons in enumerate(photons_per_process)]
+
+            # Execute the simulation in parallel
+            results = pool.map(self.simulate_photons, args_list)
+            for result in results:
+                self.sensor.screen += result
+
+            # Close the pool of worker processes
+            pool.close()
+            pool.join()
+        else:
+            self.simulate_photons((self.source.photons_per_pixel, 0))
+
+
+    def simulate_photons(self, args: tuple):
+    
+        num_photons, pbar_pos = args
         # Find the coordinates of non-zero elements in the source mask
         i_coords, j_coords = np.where(self.source.mask == 1)
-
-        for _ in tqdm(range(self.source.photons_per_pixel)):
+        for _ in tqdm(range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos):
             # Sample the angles for the photon
             theta, phi = self.sample_angles()
 
@@ -127,6 +159,8 @@ class CodApSimulator:
                     self.sensor.screen[sensor_position[0], sensor_position[1]] += 1
                 except IndexError:
                     pass
+        return self.sensor.screen
+
 
     def passes_through_slit(self, coordinates, angles):
         """
@@ -229,16 +263,16 @@ class CodApSimulator:
 
     def sample_angles(self):
         """Samples the angles of the photons from a uniform distribution"""
-        theta = self.rng.uniform(*self.options.theta_bounds, self.source.mask.shape)
-        phi = self.rng.uniform(*self.options.phi_bounds, self.source.mask.shape)
+        theta = np.random.uniform(*self.options.theta_bounds, self.source.mask.shape)
+        phi = np.random.uniform(*self.options.phi_bounds, self.source.mask.shape)
         return theta, phi
 
 
-def play_simulation(simulator: CodApSimulator, config_path: str):
+def play_simulation(simulator: CodApSimulator, config_path: str, parallelize: bool=False):
     """Plays the simulation"""
     print("Simulating the propagation of photons through the slit...")
 
-    simulator.make_image()
+    simulator.make_image(parallelize=parallelize)
     if simulator.options.add_noise:
         print("Adding noise to the image...")
         simulator.add_noise()
@@ -322,17 +356,20 @@ def main():
     parser.add_argument(
         "--config", type=str, required=True, help="Path to the config file"
     )
+    parser.add_argument(
+        "--parallelize", action="store_true", help="Enable parallelization"
+    )
     args = parser.parse_args()
-    config_path = args.config
-    source, slit, sensor, options = get_objects_from_config(config_path=config_path)
+
+    source, slit, sensor, options = get_objects_from_config(config_path=args.config)
     simulator = CodApSimulator(source=source, slit=slit, sensor=sensor, options=options)
 
-    play_simulation(simulator=simulator, config_path=config_path)
+    play_simulation(simulator=simulator, config_path=args.config, parallelize=args.parallelize)
     plot_results(simulator)
 
     # Save simulator object as a pickle file.
-    with open(os.path.join(simulator.saving_dir, "simulator.pkl"), "wb") as f:
-        pickle.dump(simulator, f)
+    with open(os.path.join(simulator.saving_dir, "simulator.pkl"), "wb") as file:
+        pickle.dump(simulator, file)
 
 if __name__ == "__main__":
     main()
