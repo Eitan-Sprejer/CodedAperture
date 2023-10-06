@@ -48,6 +48,15 @@ def get_objects_from_config(config_path):
 
     return source, slit, sensor, options
 
+def split_photons(n_photons: int, n_cores: int) -> list:
+    """Splits the number of photons to be simulated between the cores."""
+    base_value = n_photons // n_cores
+    remainder = n_photons % n_cores
+    result = [base_value] * n_cores
+    for i in range(remainder):
+        result[i] += 1
+    return result
+
 @dataclass
 class SourceScreen:
     mask_size: list
