@@ -19,46 +19,6 @@ plt.rcParams["figure.dpi"] = 120
 plt.rcParams["legend.fontsize"] = "medium"
 plt.rcParams["axes.labelsize"] = "large"
 
-def simulate_photons(args):
-    
-    simulator, num_photons, pbar_pos = args
-    # Find the coordinates of non-zero elements in the source mask
-    i_coords, j_coords = np.where(simulator.source.mask == 1)
-    for _ in tqdm(range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos):
-        # Sample the angles for the photon
-        theta, phi = simulator.sample_angles()
-
-        photon_theta = theta[i_coords, j_coords]
-        photon_phi = phi[i_coords, j_coords]
-
-        # Check if the photons pass through the slit
-        passes_through = simulator.passes_through_slit(
-            np.vstack((i_coords, j_coords, np.zeros_like(i_coords))).T,
-            np.vstack((photon_theta, photon_phi)).T,
-        )
-
-        # Compute the sensor positions for photons that pass through the slit
-        valid_photons = passes_through.nonzero()[0]
-        landing_positions = simulator.compute_landing_pixels(
-            np.vstack(
-                (
-                    i_coords[valid_photons],
-                    j_coords[valid_photons],
-                    np.zeros_like(valid_photons),
-                )
-            ).T,
-            np.vstack((photon_theta[valid_photons], photon_phi[valid_photons])).T,
-            simulator.options.source_to_sensor_distance,
-        )
-
-        # Increment the sensor screen for valid landing positions
-        for sensor_position in landing_positions:
-            try:
-                simulator.sensor.screen[sensor_position[0], sensor_position[1]] += 1
-            except IndexError:
-                pass
-    return simulator.sensor.screen
-
 
 class CodApSimulator:
     def __init__(
@@ -146,16 +106,56 @@ class CodApSimulator:
         pool = multiprocessing.Pool(processes=num_processes)
 
         # Prepare the arguments for the simulate_photons function
-        args_list = [(self, photons_per_process, pbar_pos) for pbar_pos in range(num_processes)]
+        args_list = [(photons_per_process, pbar_pos) for pbar_pos in range(num_processes)]
 
         # Execute the simulation in parallel
-        results = pool.map(simulate_photons, args_list)
+        results = pool.map(self.simulate_photons, args_list)
         for result in results:
             self.sensor.screen += result
 
         # Close the pool of worker processes
         pool.close()
         pool.join()
+
+    def simulate_photons(self, args):
+    
+        num_photons, pbar_pos = args
+        # Find the coordinates of non-zero elements in the source mask
+        i_coords, j_coords = np.where(self.source.mask == 1)
+        for _ in tqdm(range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos):
+            # Sample the angles for the photon
+            theta, phi = self.sample_angles()
+
+            photon_theta = theta[i_coords, j_coords]
+            photon_phi = phi[i_coords, j_coords]
+
+            # Check if the photons pass through the slit
+            passes_through = self.passes_through_slit(
+                np.vstack((i_coords, j_coords, np.zeros_like(i_coords))).T,
+                np.vstack((photon_theta, photon_phi)).T,
+            )
+
+            # Compute the sensor positions for photons that pass through the slit
+            valid_photons = passes_through.nonzero()[0]
+            landing_positions = self.compute_landing_pixels(
+                np.vstack(
+                    (
+                        i_coords[valid_photons],
+                        j_coords[valid_photons],
+                        np.zeros_like(valid_photons),
+                    )
+                ).T,
+                np.vstack((photon_theta[valid_photons], photon_phi[valid_photons])).T,
+                self.options.source_to_sensor_distance,
+            )
+
+            # Increment the sensor screen for valid landing positions
+            for sensor_position in landing_positions:
+                try:
+                    self.sensor.screen[sensor_position[0], sensor_position[1]] += 1
+                except IndexError:
+                    pass
+        return self.sensor.screen
 
 
     def passes_through_slit(self, coordinates, angles):
