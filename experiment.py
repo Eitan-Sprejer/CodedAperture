@@ -229,8 +229,6 @@ class CodApSimulator:
 
     def sample_angles(self):
         """Samples the angles of the photons from a uniform distribution"""
-        if self.options.phi_bounds[0] == "max_angle":
-            self.options.phi_bounds = [0, (np.arctan(max(self.source.mask_size)/self.options.source_to_slit_distance))] # Define the max angle of phi as the max angle that will reach the mask from the center of the source
         theta = self.rng.uniform(*self.options.theta_bounds, self.source.mask.shape)
         phi = self.rng.uniform(*self.options.phi_bounds, self.source.mask.shape)
         return theta, phi
