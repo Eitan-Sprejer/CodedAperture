@@ -259,8 +259,8 @@ class CodApSimulator:
 
     def sample_angles(self):
         """Samples the angles of the photons from a uniform distribution"""
-        theta = self.rng.uniform(*self.options.theta_bounds, self.source.mask.shape)
-        phi = self.rng.uniform(*self.options.phi_bounds, self.source.mask.shape)
+        theta = np.random.uniform(*self.options.theta_bounds, self.source.mask.shape)
+        phi = np.random.uniform(*self.options.phi_bounds, self.source.mask.shape)
         return theta, phi
 
 
