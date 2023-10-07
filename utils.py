@@ -40,6 +40,11 @@ def get_objects_from_config(config_path):
         **config["sensor"][sensor_type],
     }
     options_config = config["options"]
+    # Add the file name to the options
+    if '/' in config_path:
+        options_config["config_filename"] = config_path.split("/")[-1].split('.json')[0]
+    else:
+        options_config["config_filename"] = config_path.split("\\")[-1].split('.json')[0]
 
     source = SourceScreen(**source_config)
     slit = SlitScreen(**slit_config)
@@ -110,6 +115,7 @@ class SensorScreen:
 
 @dataclass
 class Options:
+    config_filename: str
     name: str
     add_noise: bool
     source_to_slit_distance: float

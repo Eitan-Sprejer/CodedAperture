@@ -136,15 +136,18 @@ class CodApSimulator:
         """Returns the path to save the results"""
 
         os.makedirs("results", exist_ok=True)
-        saving_dir = os.path.join("results", self.options.name)
+        saving_dir = os.path.join("results", self.options.config_filename, self.options.name)
         os.makedirs(saving_dir, exist_ok=True)
         return saving_dir
 
     def save_results(self, config_path: str):
         """Saves the results of the simulation"""
-        np.save(os.path.join(self.saving_dir, "image.npy"), self.sensor.screen)
         # Copy the config file to the results folder
         shutil.copy(config_path, self.saving_dir)
+
+        # Save simulator object as a pickle file.
+        with open(os.path.join(self.saving_dir, "simulator.pkl"), "wb") as file:
+            pickle.dump(self, file)
 
     def add_noise(self):
         """Adds noise to the image"""
@@ -400,23 +403,12 @@ def plot_results(simulator: CodApSimulator):
     # Save figure
     plt.savefig(os.path.join(simulator.saving_dir, "results.png"))
 
-    # plot the noise matrix
-    plt.figure(figsize=(10, 10))
-    plt.imshow(simulator.sensor.noise_matrix)
-    plt.colorbar()
-    plt.savefig(os.path.join(simulator.saving_dir, "noise_matrix.png"))
-
     plt.figure(figsize=(10, 10))
     plt.hist(
         simulator.sensor.screen.flatten(),
         bins=np.arange(0, np.round(np.max(simulator.sensor.screen)), 0.1)
     )
     plt.savefig(os.path.join(simulator.saving_dir, "charge_histogram.png"))
-
-    plt.figure(figsize=(10, 10))
-    plt.imshow(simulator.decoding_pattern)
-    plt.savefig(os.path.join(simulator.saving_dir, "decoding_pattern.png"))
-
 
 def main():
     """
@@ -437,10 +429,6 @@ def main():
 
     play_simulation(simulator=simulator, config_path=args.config, parallelize=args.parallelize)
     plot_results(simulator)
-
-    # Save simulator object as a pickle file.
-    with open(os.path.join(simulator.saving_dir, "simulator.pkl"), "wb") as file:
-        pickle.dump(simulator, file)
 
 if __name__ == "__main__":
     main()
