@@ -8,7 +8,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 
-def process_image(file_name, image_type = 'png', target_size=(100, 100), threshold = 90, invert = False):
+def process_image(file_name, image_type = 'png', target_size=(100, 100), threshold = 77, invert = False):
     """
     This function takes a png image and converts it to a binary image.
     The image is first converted to grayscale, then resized to the desired size.

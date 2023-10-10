@@ -350,7 +350,9 @@ def play_simulation(simulator: CodApSimulator, config_path: str, parallelize: bo
     if simulator.options.add_noise:
         print("Adding noise to the image...")
         simulator.add_noise()
-    simulator.decode_image()
+        if simulator.options.decode_img == True:
+            simulator.decode_image()
+            print("Decoding Image")
     print("Done!")
     print("Saving results...")
     simulator.save_results(config_path)

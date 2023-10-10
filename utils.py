@@ -125,6 +125,7 @@ class Options:
     phi_bounds: list
     automatic_angles: bool
     random_seed: int
+    decode_img: bool
 
 
     def __post_init__(self) -> None:
@@ -288,15 +289,17 @@ class MaskGenerator:
         """
         file_name = self.mask_type
         path = f"exp_pics/{self.mask_type}.png"
+
         # Check if the processed image is already saved
-        if os.path.isfile(path):
-            mask = np.array(Image.open(path))
-            if mask.shape != self.mask_size:
-                raise ValueError(
-                    f"Mask size {mask.shape} does not match the specified size {self.mask_size}"
-                )
-            return mask
+        #if os.path.isfile(path):
+            #mask = np.array(Image.open(path))
+            #if mask.shape != self.mask_size:
+            #    raise ValueError(
+            #        f"Mask size {mask.shape} does not match the specified size {self.mask_size}"
+            #    )
+            #return mask
         # Load the png image as a mask matrix
+        
         try:
             mask = process_image(file_name=file_name, target_size=self.mask_size, invert=True)
         except FileNotFoundError as exc:
