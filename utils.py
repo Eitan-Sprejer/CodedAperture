@@ -197,6 +197,8 @@ class MaskGenerator:
             return self.load_slit_from_pixelart()
         if "exp" in self.mask_type:
             return self.load_slit_from_png_image()
+        if 'training_sources' in self.mask_type:
+            return np.loadtxt(f'training_sources/{self.mask_type}')
         raise ValueError("Invalid mask type")
 
     def generate_phi_mask(self):
