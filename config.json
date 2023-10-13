@@ -2,13 +2,14 @@
     "options": {
         "name": "test1",
         "add_noise": true,
-        "source_to_slit_distance": 180,
-        "slit_to_sensor_distance": 319,
-        "inter_pixel_distance": 0.05,
+        "source_to_slit_distance": 1000,
+        "slit_to_sensor_distance": 100,
+        "inter_pixel_distance": 0.1,
         "theta_bounds": [0, 360],
         "phi_bounds": [0, 90],
         "automatic_angles": true,
-        "random_seed": 42
+        "random_seed": 42,
+        "decode_img": true
     },
     "source": {
         "mask_size": [200, 200],
@@ -17,12 +18,12 @@
         "photons_per_pixel": 50000
     },
     "slit": {
-        "mask_size": [200, 200],
+        "mask_size": [100, 100],
         "mask_type": "smile_pattern",
         "mask_width": 5
     },
     "sensor": {
-        "mask_size": [101, 101],
+        "mask_size": [100, 100],
         "type": "skipper",
         "exposure_time": 50,
         "skipper": {
