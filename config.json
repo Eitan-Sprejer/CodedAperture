@@ -1,6 +1,6 @@
 {
     "options": {
-        "name": "test1",
+        "name": "testing",
         "add_noise": true,
         "source_to_slit_distance": 1000,
         "slit_to_sensor_distance": 100,
@@ -8,19 +8,30 @@
         "theta_bounds": [0, 360],
         "phi_bounds": [0, 90],
         "automatic_angles": true,
-        "random_seed": 42,
-        "decode_img": true
+        "random_seed": 42
+    },
+    "decoder": {
+        "decode_img": true,
+        "method": "fourier",
+        "fourier_config": {
+            "threshold": 1e-2
+        }
     },
     "source": {
-        "mask_size": [200, 200],
-        "mask_type": "lambda_pattern",
+        "mask_size": [1000, 1000],
+        "mask_type": "phi",
         "mask_width": 10,
-        "photons_per_pixel": 50000
+        "photons_per_pixel": 5000
     },
     "slit": {
         "mask_size": [100, 100],
-        "mask_type": "smile_pattern",
-        "mask_width": 5
+        "mask_type": "frame",
+        "mask_width": 5,
+        "mura_config": {
+            "rank": 8,
+            "tile": 0,
+            "center": true
+        }
     },
     "sensor": {
         "mask_size": [100, 100],
