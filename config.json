@@ -20,7 +20,7 @@
     "source": {
         "mask_size": [1000, 1000],
         "mask_type": "phi",
-        "mask_width": 10,
+        "mask_width": 40,
         "photons_per_pixel": 5000
     },
     "slit": {
