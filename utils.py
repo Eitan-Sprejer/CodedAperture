@@ -21,6 +21,15 @@ plt.rcParams["legend.fontsize"] = "medium"
 plt.rcParams["axes.labelsize"] = "large"
 
 
+def get_config_name(config_path: str):
+    if '/' in config_path:
+        config_filename = config_path.split("/")[-1].split('.json')[0]
+    elif '\\' in config_path:
+        config_filename = config_path.split("\\")[-1].split('.json')[0]
+    else:
+        config_filename = config_path.split('.json')[0]
+    return config_filename
+
 def get_config_from_path(path) -> dict:
     """Loads a json file from a path and returns a dictionary with the config"""
     with open(path, "r") as file:
@@ -39,19 +48,18 @@ def get_objects_from_config(config_path):
         "exposure_time": config["sensor"]["exposure_time"],
         **config["sensor"][sensor_type],
     }
+    decoder_config = config["decoder"]
     options_config = config["options"]
     # Add the file name to the options
-    if '/' in config_path:
-        options_config["config_filename"] = config_path.split("/")[-1].split('.json')[0]
-    else:
-        options_config["config_filename"] = config_path.split("\\")[-1].split('.json')[0]
+    options_config['config_filename'] = get_config_name(config_path)
 
     source = SourceScreen(**source_config)
     slit = SlitScreen(**slit_config)
     sensor = SensorScreen(**sensor_config)
+    decoder = Decoder(**decoder_config)
     options = Options(**options_config)
 
-    return source, slit, sensor, options
+    return source, slit, sensor, decoder, options
 
 def split_photons(n_photons: int, n_cores: int) -> list:
     """Splits the number of photons to be simulated between the cores."""
@@ -61,6 +69,16 @@ def split_photons(n_photons: int, n_cores: int) -> list:
     for i in range(remainder):
         result[i] += 1
     return result
+
+@dataclass
+class Decoder:
+    decode_img: bool
+    method: str
+    fourier_config: dict
+
+    def __post_init__(self) -> None:
+        if self.method == "fourier":
+            self.threshold = self.fourier_config["threshold"]
 
 @dataclass
 class SourceScreen:
@@ -86,6 +104,7 @@ class SlitScreen:
     mask_size: list
     mask_type: str
     mask_width: int
+    mura_config: dict
 
     def __post_init__(self) -> None:
         
@@ -94,6 +113,7 @@ class SlitScreen:
             mask_size=self.mask_size,
             mask_type=self.mask_type,
             mask_width=self.mask_width,
+            mura_config=self.mura_config
         )
         self.mask = self.mask_generator.generate_mask()
 
@@ -125,7 +145,6 @@ class Options:
     phi_bounds: list
     automatic_angles: bool
     random_seed: int
-    decode_img: bool
 
 
     def __post_init__(self) -> None:
@@ -182,6 +201,10 @@ class MaskGenerator:
         self.mask_size = mask_config["mask_size"]
         self.mask_width = mask_config["mask_width"]
         self.mask_type = mask_config["mask_type"]
+        if self.mask_type == 'mura':
+            self.tile = mask_config['mura_config']['tile']
+            self.rank = mask_config['mura_config']['rank']
+            self.center = mask_config['mura_config']['center']
 
     def generate_mask(self):
         """Generates a mask with the specified parameters"""
@@ -312,5 +335,5 @@ class MaskGenerator:
 
     def generate_apertures_mask(self):
         """Generates a mask from the apertures library"""
-        mura = ca.mura(rank=8, tile=None, center=True)
+        mura = ca.mura(rank=self.rank, tile=self.tile, center=self.center)
         return mura.aperture
