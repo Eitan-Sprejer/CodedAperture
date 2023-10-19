@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.ndimage import convolve
-from utils import SourceScreen, SlitScreen, SensorScreen
+from utils import SlitScreen, SensorScreen, Decoder
 import scipy as sp
 
 def get_mura_decoding_pattern(slit_mask: np.ndarray):
@@ -38,11 +38,10 @@ def get_fourier_decoding_pattern(slit_mask: np.ndarray, image: np.ndarray, thres
     # Pad the slit_mask with 0s so that it matches the size of the image
     slit_mask = np.pad(slit_mask, (0, image.shape[0] - slit_mask.shape[0]), mode='constant')
     # Shift the slit_mask so that the center is at the center of the image
-    slit_mask = sp.fftpack.ifftshift(slit_mask)
+    slit_mask = sp.fft.ifftshift(slit_mask)
 
     # Fourier transform the image and the slit
-    slit_ft = sp.fftpack.fft2(slit_mask)
-    slit_ft = np.fft.fft2(slit_mask)
+    slit_ft = sp.fft.fft2(slit_mask)
     slit_ft_inv = np.conj(slit_ft) / (np.abs(slit_ft) ** 2 + threshold)
     return slit_ft_inv
 
@@ -56,23 +55,25 @@ def general_image_reconstruction(sensor: SensorScreen, slit: SlitScreen):
     reconstructed_image = convolve(sensor.screen, decoding_pattern, mode='wrap')
     return decoding_pattern, reconstructed_image
 
-def fourier_image_reconstruction(sensor: SensorScreen, slit: SlitScreen, threshold: float=1e-3):
+def fourier_image_reconstruction(sensor: SensorScreen, slit: SlitScreen, threshold: float=1e-2):
     decoding_pattern_ft = get_fourier_decoding_pattern(
         slit.mask,
         sensor.screen,
         threshold=threshold
     )
-    sensor_ft = sp.fftpack.fft2(sensor.screen)
+    sensor_ft = sp.fft.fft2(sensor.screen)
     reconstructed_image_ft = sensor_ft * decoding_pattern_ft
-    reconstructed_image = sp.fftpack.ifft2(reconstructed_image_ft)
-    decoding_pattern = sp.fftpack.ifft2(decoding_pattern_ft)
-    return decoding_pattern, reconstructed_image
+    reconstructed_image = sp.fft.ifft2(reconstructed_image_ft)
+    decoding_pattern = sp.fft.ifft2(decoding_pattern_ft)
+    return np.abs(decoding_pattern), np.abs(reconstructed_image)
 
-def decode_image(sensor: SensorScreen, slit: SlitScreen, mask_type: str):
-    if mask_type == 'mura':
+def decode_image(sensor: SensorScreen, slit: SlitScreen, decoder: Decoder, mask_type: str):
+    if decoder.method == 'mura':
+        assert mask_type == 'mura', "Mura decoding method can only be used with Mura masks"
         decoding_pattern, reconstructed_image = mura_image_reconstruction(sensor, slit)
-    else:
-        # decoding_pattern, reconstructed_image = general_image_reconstruction(sensor, slit)
-        decoding_pattern, reconstructed_image = fourier_image_reconstruction(sensor, slit)
+    elif decoder.method == 'general':
+        decoding_pattern, reconstructed_image = general_image_reconstruction(sensor, slit)
+    elif decoder.method == 'fourier':
+        decoding_pattern, reconstructed_image = fourier_image_reconstruction(sensor, slit, threshold=decoder.threshold)
 
     return decoding_pattern, reconstructed_image

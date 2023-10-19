@@ -73,7 +73,7 @@ import os
 import shutil
 import json
 from decoding_algorythms import decode_image
-from utils import split_photons, get_objects_from_config, positions2coordinates, coordinates2positions, Options, SourceScreen, SlitScreen, SensorScreen
+from utils import split_photons, get_objects_from_config, positions2coordinates, coordinates2positions, Options, SourceScreen, SlitScreen, SensorScreen, Decoder
 import numpy as np
 from tqdm import tqdm
 import argparse
@@ -98,6 +98,7 @@ class CodApSimulator:
         source: SourceScreen,
         slit: SlitScreen,
         sensor: SensorScreen,
+        decoder: Decoder
     ):
 
         # Initializing attributes.
@@ -105,14 +106,15 @@ class CodApSimulator:
         self.source = source
         self.slit = slit
         self.sensor = sensor
+        self.decoder = decoder
 
         # Post processing attributes
-        if options.automatic_angles:
-            options.set_angle_bounds(self.source.mask_size, self.slit.mask_size)
+        if self.options.automatic_angles:
+            self.options.set_angle_bounds(self.source.mask_size, self.slit.mask_size)
 
         # Initializing results matrices
-        self.decoding_pattern = np.zeros_like(self.slit.mask)
-        self.decoded_image = np.zeros_like(self.source.mask)
+        self.decoder.decoding_pattern = np.zeros_like(self.slit.mask)
+        self.decoder.decoded_image = np.zeros_like(self.source.mask)
 
         self.saving_dir = self.get_path_to_save()
         self.rng = np.random.default_rng(seed=options.random_seed)
@@ -162,8 +164,8 @@ class CodApSimulator:
 
     def decode_image(self):
         """Decodes the final image generated on the sensor screen."""
-        self.decoding_pattern, self.decoded_image = decode_image(
-            self.sensor, self.slit, self.slit.mask_type
+        self.decoder.decoding_pattern, self.decoder.decoded_image = decode_image(
+            self.sensor, self.slit, self.decoder, self.slit.mask_type
         )
 
     def make_image(self, parallelize: bool=False):
@@ -350,7 +352,7 @@ def play_simulation(simulator: CodApSimulator, config_path: str, parallelize: bo
     if simulator.options.add_noise:
         print("Adding noise to the image...")
         simulator.add_noise()
-    if simulator.options.decode_img:
+    if simulator.decoder.decode_img:
         simulator.decode_image()
         print("Decoding Image")
     print("Done!")
@@ -396,9 +398,9 @@ def plot_results(simulator: CodApSimulator):
     fig.colorbar(im, cax=cbar_ax)
     plt.title("Detected Photons")
     plt.subplot(2, 2, 4)
-    vmin, vmax = 0, np.max(simulator.decoded_image)
-    # vmin, vmax = 0, float(np.percentile(simulator.decoded_image, 99.9))
-    im = plt.imshow(simulator.decoded_image, vmin=vmin, vmax=vmax)
+    vmin, vmax = 0, np.max(simulator.decoder.decoded_image)
+    # vmin, vmax = 0, float(np.percentile(simulator.decoder.decoded_image, 99.9))
+    im = plt.imshow(simulator.decoder.decoded_image, vmin=vmin, vmax=vmax)
     cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
     plt.title("Decoded Image")
@@ -426,8 +428,8 @@ def main():
     )
     args = parser.parse_args()
 
-    source, slit, sensor, options = get_objects_from_config(config_path=args.config)
-    simulator = CodApSimulator(source=source, slit=slit, sensor=sensor, options=options)
+    source, slit, sensor, decoder, options = get_objects_from_config(config_path=args.config)
+    simulator = CodApSimulator(source=source, slit=slit, sensor=sensor, options=options, decoder=decoder)
 
     play_simulation(simulator=simulator, config_path=args.config, parallelize=args.parallelize)
     plot_results(simulator)
