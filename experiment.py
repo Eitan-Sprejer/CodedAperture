@@ -353,8 +353,8 @@ def play_simulation(simulator: CodApSimulator, config_path: str, parallelize: bo
         print("Adding noise to the image...")
         simulator.add_noise()
     if simulator.decoder.decode_img:
+        print("Decoding Image...")
         simulator.decode_image()
-        print("Decoding Image")
     print("Done!")
     print("Saving results...")
     simulator.save_results(config_path)
@@ -383,7 +383,7 @@ def plot_results(simulator: CodApSimulator):
     fig = plt.figure(figsize=(20, 20))
     plt.subplot(2, 2, 1)
     vmin, vmax = 0, float(np.max(simulator.source.screen))
-    im = plt.imshow(simulator.source.screen, vmin=vmin, vmax=vmax)
+    im = plt.imshow(simulator.source.screen, vmin=vmin, vmax=vmax, cmap = "Spectral")
     cbar_ax = fig.add_axes([0.05, 0.54, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
     plt.title("Source Photons")
@@ -392,25 +392,23 @@ def plot_results(simulator: CodApSimulator):
     plt.title("Slit screen")
     plt.subplot(2, 2, 3)
     vmin, vmax = 0, np.max(simulator.sensor.screen)
-    # vmin, vmax = 0, float(np.percentile(simulator.sensor.screen, 99.9))
-    im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax)
+    im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax, cmap = "Spectral")
     cbar_ax = fig.add_axes([0.05, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
     plt.title("Detected Photons")
     plt.subplot(2, 2, 4)
     vmin, vmax = 0, np.max(simulator.decoder.decoded_image)
-    # vmin, vmax = 0, float(np.percentile(simulator.decoder.decoded_image, 99.9))
-    im = plt.imshow(simulator.decoder.decoded_image, vmin=vmin, vmax=vmax)
+    im = plt.imshow(simulator.decoder.decoded_image, vmin=vmin, vmax=vmax, cmap = "Spectral")
     cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
-    plt.title("Decoded Image")
+    plt.title("Reconstructed Image")
     # Save figure
     plt.savefig(os.path.join(simulator.saving_dir, "results.png"))
 
     plt.figure(figsize=(10, 10))
     plt.hist(
         simulator.sensor.screen.flatten(),
-        bins=np.arange(0, np.round(np.max(simulator.sensor.screen)), 0.1)
+        bins=np.arange(0, np.round(np.max(simulator.sensor.screen)), 0.05)
     )
     plt.savefig(os.path.join(simulator.saving_dir, "charge_histogram.png"))
 
