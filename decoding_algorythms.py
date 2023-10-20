@@ -48,7 +48,7 @@ def get_fourier_decoding_pattern(slit_mask: np.ndarray, image: np.ndarray, thres
 def mura_image_reconstruction(sensor: SensorScreen, slit: SlitScreen):
     decoding_pattern = get_mura_decoding_pattern(slit.mask)
     reconstructed_image = convolve(sensor.screen, decoding_pattern, mode='wrap')
-    return reconstructed_image
+    return decoding_pattern, reconstructed_image
 
 def general_image_reconstruction(sensor: SensorScreen, slit: SlitScreen):
     decoding_pattern = get_general_decoding_pattern(slit.mask)
