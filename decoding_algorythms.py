@@ -36,9 +36,13 @@ def get_general_decoding_pattern(slit_mask: np.ndarray):
 def get_fourier_decoding_pattern(slit_mask: np.ndarray, image: np.ndarray, threshold: float):
     slit_mask /= np.sum(slit_mask)
     # Pad the slit_mask with 0s so that it matches the size of the image
-    slit_mask = np.pad(slit_mask, (0, image.shape[0] - slit_mask.shape[0]), mode='constant')
-    # Shift the slit_mask so that the center is at the center of the image
-    slit_mask = sp.fft.ifftshift(slit_mask)
+    slit_mask = np.pad(slit_mask, ((image.shape[0]//2 - slit_mask.shape[0]//2, image.shape[0]//2 - slit_mask.shape[0]//2), (image.shape[1]//2 - slit_mask.shape[1]//2, image.shape[1]//2 - slit_mask.shape[1]//2)), 'constant', constant_values=0)
+    slit_mask = np.roll(slit_mask, image.shape[0]//2, axis=0)
+    slit_mask = np.roll(slit_mask, image.shape[1]//2, axis=1)
+    if slit_mask.shape != image.shape:
+        slit_mask = slit_mask[:image.shape[0], :image.shape[1]] #temporary solution
+    # # Shift the slit_mask so that the center is at the center of the image
+    # slit_mask = sp.fft.ifftshift(slit_mask)
 
     # Fourier transform the image and the slit
     slit_ft = sp.fft.fft2(slit_mask)
