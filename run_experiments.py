@@ -23,4 +23,5 @@ def run_sensor_comparison_experiment(config_path: str):
         os.remove(f'modified_configs/fourier_decoding_experiment.json')
 
 if __name__ == '__main__':
-    run_experiment()
+    
+    run_sensor_comparison_experiment(config_path)
