@@ -17,7 +17,7 @@ def get_mura_decoding_pattern(slit_mask: np.ndarray):
                 elif slit_mask[i, j] == 0:
                     decoding_pattern[i, j] = -1
     # Renormalize the decoding pattern for the convolution
-    decoding_pattern /= np.sum(decoding_pattern)
+    decoding_pattern = decoding_pattern / np.sum(decoding_pattern)
     return decoding_pattern
 
 def get_general_decoding_pattern(slit_mask: np.ndarray):
@@ -30,11 +30,11 @@ def get_general_decoding_pattern(slit_mask: np.ndarray):
             elif slit_mask[i, j] == 0:
                 decoding_pattern[i, j] = transparency/(transparency-1)
     # Renormalize the decoding pattern for the convolution
-    decoding_pattern /= np.sum(decoding_pattern)
+    decoding_pattern = decoding_pattern / np.sum(decoding_pattern)
     return decoding_pattern
 
 def get_fourier_decoding_pattern(slit_mask: np.ndarray, image: np.ndarray, threshold: float):
-    slit_mask /= np.sum(slit_mask)
+    slit_mask = slit_mask / np.sum(slit_mask)
     # Pad the slit_mask with 0s so that it matches the size of the image
     slit_mask = np.pad(slit_mask, ((image.shape[0]//2 - slit_mask.shape[0]//2, image.shape[0]//2 - slit_mask.shape[0]//2), (image.shape[1]//2 - slit_mask.shape[1]//2, image.shape[1]//2 - slit_mask.shape[1]//2)), 'constant', constant_values=0)
     slit_mask = np.roll(slit_mask, image.shape[0]//2, axis=0)
@@ -69,6 +69,9 @@ def fourier_image_reconstruction(sensor: SensorScreen, slit: SlitScreen, thresho
     reconstructed_image_ft = sensor_ft * decoding_pattern_ft
     reconstructed_image = sp.fft.ifft2(reconstructed_image_ft)
     decoding_pattern = sp.fft.ifft2(decoding_pattern_ft)
+    # Center back the decoding_pattern
+    decoding_pattern = np.roll(decoding_pattern, -sensor.screen.shape[0]//2, axis=0)
+    decoding_pattern = np.roll(decoding_pattern, -sensor.screen.shape[1]//2, axis=1)
     return np.abs(decoding_pattern), np.abs(reconstructed_image)
 
 def decode_image(sensor: SensorScreen, slit: SlitScreen, decoder: Decoder, mask_type: str):
