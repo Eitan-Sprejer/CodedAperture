@@ -34,7 +34,8 @@ def run_mura_slit_size_experiment(config_path: str, mura_rank_list: list[int]):
     In this experiment, we observe the difference on the image reconstruction quality for
     different slit sizes. Specifically, mura pattern slits.
     """
-    config_name = get_config_name(config_path)
+    # Name the config as the experiment.
+    config_name = 'mura_slit_size_experiment'
     for mura_rank in mura_rank_list:
 
         # Get the shape of the new slit
@@ -43,10 +44,10 @@ def run_mura_slit_size_experiment(config_path: str, mura_rank_list: list[int]):
 
         with open(config_path, 'r') as f:
             config = json.load(f)
-        split_config_name = config['options']['name'].split(' | ')
+        split_name = config['options']['name'].split(' | ')
         config['slit']['mura_config']['rank'] = int(mura_rank)
         config['slit']['mask_size'] = mask_size
-        config['options']['name'] = f'{split_config_name[0]} | mura {mura_rank} | {split_config_name[2]}'
+        config['options']['name'] = f'{split_name[0]} | mura {mura_rank} | {split_name[2]}'
         with open(f'modified_configs/{config_name}.json', 'w') as f:
             json.dump(config, f, indent=4)
 
