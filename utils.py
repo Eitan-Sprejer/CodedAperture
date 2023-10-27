@@ -13,6 +13,7 @@ from scipy.signal import convolve2d
 from typing import Union
 from image_preprocessing import process_image
 from PIL import Image
+import cv2
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
@@ -69,6 +70,76 @@ def split_photons(n_photons: int, n_cores: int) -> list:
     for i in range(remainder):
         result[i] += 1
     return result
+
+def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
+    """
+    Zooms out an image by a factor of zoom_out_factor, by taking the average of blocks of pixels, 
+    and then zero padding the edges to take it back to the original size.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        The image to be zoomed out
+    zoom_out_factor : int
+        The factor by which the image should be zoomed out. Must be an integer greater than 1.
+
+    Returns
+    -------
+    np.ndarray
+        The zoomed out image
+    """
+    
+    zoom_out_factor = int(zoom_out_factor)
+
+    # Calculate the new dimensions
+    new_rows = image.shape[0] // zoom_out_factor
+    new_cols = image.shape[1] // zoom_out_factor
+
+    # Create an empty image with the new dimensions
+    downsampled_image = np.empty((new_rows, new_cols), dtype=image.dtype)
+
+    # Populate the downsampled image by taking the average of blocks from the original image
+    for i in range(new_rows):
+        for j in range(new_cols):
+            block = image[i * zoom_out_factor:(i + 1) * zoom_out_factor,
+                        j * zoom_out_factor:(j + 1) * zoom_out_factor]
+            downsampled_image[i, j] = np.mean(block)
+
+    # Zero pad the edges to take the downsampled image back to the original size, centering it
+    padded_image = np.zeros_like(image)
+
+    # Calculate the starting and ending indices for the padded image
+    start_row = (padded_image.shape[0] - downsampled_image.shape[0]) // 2
+    end_row = start_row + downsampled_image.shape[0]
+    start_col = (padded_image.shape[1] - downsampled_image.shape[1]) // 2
+    end_col = start_col + downsampled_image.shape[1]
+
+    # Place the downsampled image in the padded image
+    padded_image[start_row:end_row, start_col:end_col] = downsampled_image
+
+    # Plot the downsampled image
+    plt.imshow(padded_image)
+    return padded_image
+
+def zoom_in_image(image: np.ndarray, zoom_in_factor: float):
+    
+    # Calculate the new size while maintaining the same resolution
+    new_width = int(image.shape[1] * zoom_in_factor)
+    new_height = int(image.shape[0] * zoom_in_factor)
+
+    # Resize the image using OpenCV
+    zoomed_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+
+    # Crop the zoomed image to maintain the original resolution (1000x1000)
+    left = (new_width - image.shape[0]) // 2
+    top = (new_height - image.shape[1]) // 2
+    right = left + image.shape[0]
+    bottom = top + image.shape[1]
+    zoomed_image = zoomed_image[top:bottom, left:right]
+
+    # Ensure the resulting image is of the same data type as the original
+    zoomed_image = zoomed_image.astype(image.dtype)
+    return zoomed_image
 
 @dataclass
 class Decoder:
