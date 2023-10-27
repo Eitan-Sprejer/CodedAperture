@@ -73,7 +73,7 @@ import os
 import shutil
 import json
 from decoding_algorythms import decode_image
-from utils import split_photons, get_objects_from_config, positions2coordinates, coordinates2positions, Options, SourceScreen, SlitScreen, SensorScreen, Decoder
+from utils import split_photons, get_objects_from_config, positions2coordinates, coordinates2positions, zoom_in_image, Options, SourceScreen, SlitScreen, SensorScreen, Decoder
 import numpy as np
 from tqdm import tqdm
 import argparse
@@ -379,29 +379,34 @@ def plot_results(simulator: CodApSimulator):
 
     charge_histogram.png: A histogram of the charge values in the sensor screen.
     """
+    # Zoom-in the sensor screen and reconstruction
+    zoom_factor = simulator.options.source_to_sensor_distance / simulator.options.slit_to_sensor_distance
+    simulation_zoom_factor = zoom_factor/(np.max(simulator.source.screen.shape)/np.max(simulator.sensor.screen.shape))
+    zoomed_in_decoded_image = zoom_in_image(simulator.decoder.decoded_image, simulation_zoom_factor)
+
     # Plot the results
     fig = plt.figure(figsize=(20, 20))
     plt.subplot(2, 2, 1)
     vmin, vmax = 0, float(np.max(simulator.source.screen))
-    im = plt.imshow(simulator.source.screen, vmin=vmin, vmax=vmax, cmap = "Spectral")
+    plt.title("Source Photons")
+    im = plt.imshow(simulator.source.screen, vmin=vmin, vmax=vmax, cmap = "viridis")
     cbar_ax = fig.add_axes([0.05, 0.54, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
-    plt.title("Source Photons")
     plt.subplot(2, 2, 2)
-    plt.imshow(simulator.slit.mask, cmap="binary_r")
     plt.title("Slit screen")
+    plt.imshow(simulator.slit.mask, cmap="binary_r")
     plt.subplot(2, 2, 3)
     vmin, vmax = 0, np.max(simulator.sensor.screen)
-    im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax, cmap = "Spectral")
+    plt.title("Detected Photons")
+    im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax, cmap = "viridis")
     cbar_ax = fig.add_axes([0.05, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
-    plt.title("Detected Photons")
     plt.subplot(2, 2, 4)
-    vmin, vmax = 0, np.max(simulator.decoder.decoded_image)
-    im = plt.imshow(simulator.decoder.decoded_image, vmin=vmin, vmax=vmax, cmap = "Spectral")
+    vmin, vmax = 0, np.max(zoomed_in_decoded_image)
+    plt.title("Zoomed-In Reconstructed Image")
+    im = plt.imshow(zoomed_in_decoded_image, vmin=vmin, vmax=vmax, cmap = "viridis")
     cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
-    plt.title("Reconstructed Image")
     # Save figure
     plt.savefig(os.path.join(simulator.saving_dir, "results.png"))
 
