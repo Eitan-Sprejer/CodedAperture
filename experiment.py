@@ -201,7 +201,7 @@ class CodApSimulator:
     
         num_photons, pbar_pos = args
         # Find the coordinates of non-zero elements in the source mask
-        i_coords, j_coords = np.where(self.source.mask == 1)
+        i_coords, j_coords = np.where(self.source.mask > 0)
         for _ in tqdm(range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos):
             # Sample the angles for the photon
             theta, phi = self.sample_angles()
@@ -230,9 +230,9 @@ class CodApSimulator:
             )
 
             # Increment the sensor screen for valid landing positions
-            for sensor_position in landing_positions:
+            for sensor_position, valid_photon in zip(landing_positions, valid_photons):
                 try:
-                    self.sensor.screen[sensor_position[0], sensor_position[1]] += 1
+                    self.sensor.screen[sensor_position[0], sensor_position[1]] += self.source.mask[i_coords[valid_photon], j_coords[valid_photon]]
                 except IndexError:
                     pass
         return self.sensor.screen
