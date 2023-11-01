@@ -83,4 +83,8 @@ def decode_image(sensor: SensorScreen, slit: SlitScreen, decoder: Decoder, mask_
     elif decoder.method == 'fourier':
         decoding_pattern, reconstructed_image = fourier_image_reconstruction(sensor, slit, threshold=decoder.threshold)
 
+    # Flip the reconstructed image
+    reconstructed_image = np.flip(reconstructed_image, axis=0)
+    reconstructed_image = np.flip(reconstructed_image, axis=1)
+
     return decoding_pattern, reconstructed_image
