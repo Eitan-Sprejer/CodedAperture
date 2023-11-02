@@ -135,20 +135,25 @@ def zoom_in_image(image: np.ndarray, zoom_in_factor: float):
 
     # Resize the image using OpenCV
     zoomed_image = cv2.resize(
-        image, (new_width, new_height), interpolation=cv2.INTER_LINEAR
+        image, (new_width, new_height), interpolation=cv2.INTER_CUBIC
     )
 
-    # Crop the zoomed image to maintain the original resolution (1000x1000)
-    left = (new_width - image.shape[0]) // 2
-    top = (new_height - image.shape[1]) // 2
-    right = left + image.shape[0]
-    bottom = top + image.shape[1]
+    # Calculate the cropping parameters with floating-point values
+    left = (new_width - image.shape[1]) / 2.0
+    top = (new_height - image.shape[0]) / 2.0
+    right = left + image.shape[1]
+    bottom = top + image.shape[0]
+
+    # Round the cropping parameters to the nearest integers
+    left, top, right, bottom = map(int, [left, top, right, bottom])
+
+    # Crop the zoomed image to maintain the original resolution
     zoomed_image = zoomed_image[top:bottom, left:right]
 
     # Ensure the resulting image is of the same data type as the original
     zoomed_image = zoomed_image.astype(image.dtype)
-    return zoomed_image
 
+    return zoomed_image
 
 @dataclass
 class Decoder:
