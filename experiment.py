@@ -73,13 +73,26 @@ import os
 import shutil
 import json
 from decoding_algorythms import decode_image
-from utils import split_photons, get_objects_from_config, positions2coordinates, coordinates2positions, zoom_in_image, Options, SourceScreen, SlitScreen, SensorScreen, Decoder
+from utils import (
+    split_photons,
+    get_objects_from_config,
+    positions2coordinates,
+    coordinates2positions,
+    zoom_in_image,
+    zoom_out_image,
+    Options,
+    SourceScreen,
+    SlitScreen,
+    SensorScreen,
+    Decoder,
+)
 import numpy as np
 from tqdm import tqdm
 import argparse
 import matplotlib.pyplot as plt
 from scipy import ndimage
 from scipy.signal import convolve2d, correlate
+from scipy.interpolate import RectBivariateSpline
 import pickle
 import sys
 import multiprocessing
@@ -98,9 +111,8 @@ class CodApSimulator:
         source: SourceScreen,
         slit: SlitScreen,
         sensor: SensorScreen,
-        decoder: Decoder
+        decoder: Decoder,
     ):
-
         # Initializing attributes.
         self.options = options
         self.source = source
@@ -123,9 +135,7 @@ class CodApSimulator:
         if os.listdir(self.saving_dir):
             print("The chosen directory is not empty:")
             print(self.saving_dir)
-            ans = input(
-                "Do you want to continue, override the previous results? (y/n)"
-            )
+            ans = input("Do you want to continue, override the previous results? (y/n)")
             if ans == "n":
                 print("Exiting...")
                 sys.exit()
@@ -138,7 +148,9 @@ class CodApSimulator:
         """Returns the path to save the results"""
 
         os.makedirs("results", exist_ok=True)
-        saving_dir = os.path.join("results", self.options.config_filename, self.options.name)
+        saving_dir = os.path.join(
+            "results", self.options.config_filename, self.options.name
+        )
         os.makedirs(saving_dir, exist_ok=True)
         return saving_dir
 
@@ -167,8 +179,45 @@ class CodApSimulator:
         self.decoder.decoding_pattern, self.decoder.decoded_image = decode_image(
             self.sensor, self.slit, self.decoder, self.slit.mask_type
         )
+        # Rescale the decoded image to match the shape of the source screen
+        self.rescale_decoded_image()
 
-    def make_image(self, parallelize: bool=False):
+    def rescale_decoded_image(self):
+        """
+        Rescale the decoded image to the same size as the source image, zooming
+        in or out accordingly, and then using 2d spline interpolation to change
+        its resolution.
+        """
+
+        # Zoom-in the sensor screen and reconstruction
+        zoom_factor = (
+            self.options.source_to_sensor_distance
+            / self.options.slit_to_sensor_distance
+        )
+        simulation_zoom_factor = zoom_factor / (
+            np.max(self.source.screen.shape) / np.max(self.sensor.screen.shape)
+        )
+        if simulation_zoom_factor > 1:
+            zoomed_decoded_image = zoom_in_image(
+                self.decoder.decoded_image, simulation_zoom_factor
+            )
+        elif simulation_zoom_factor < 1:
+            zoomed_decoded_image = zoom_out_image(
+                self.decoder.decoded_image, simulation_zoom_factor
+            )
+        else:
+            zoomed_decoded_image = self.decoder.decoded_image
+
+        # Reshape the image to the shape of the sensor screen using 2d spline interpolation
+
+        x = np.linspace(0, 1, zoomed_decoded_image.shape[0])
+        y = np.linspace(0, 1, zoomed_decoded_image.shape[1])
+        f = RectBivariateSpline(x, y, zoomed_decoded_image, s=0, bbox=[None, None, None, None])
+        xnew = np.linspace(0, 1, self.source.screen.shape[0])
+        ynew = np.linspace(0, 1, self.source.screen.shape[1])
+        self.decoder.rescaled_decoded_image = f(xnew, ynew)
+
+    def make_image(self, parallelize: bool = False):
         """Simulates the propagation of photons through the slit"""
 
         if parallelize:
@@ -183,7 +232,10 @@ class CodApSimulator:
             pool = multiprocessing.Pool(processes=num_processes)
 
             # Prepare the arguments for the simulate_photons function
-            args_list = [(photons, pbar_pos) for pbar_pos, photons in enumerate(photons_per_process)]
+            args_list = [
+                (photons, pbar_pos)
+                for pbar_pos, photons in enumerate(photons_per_process)
+            ]
 
             # Execute the simulation in parallel
             results = pool.map(self.simulate_photons, args_list)
@@ -196,11 +248,12 @@ class CodApSimulator:
         else:
             self.simulate_photons((self.source.photons_per_pixel, 0))
 
-
     def simulate_photons(self, args: tuple):
         num_photons, pbar_pos = args
 
-        for _ in tqdm(range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos):
+        for _ in tqdm(
+            range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos
+        ):
             # Sample a matrix of uniform random numbers between 0 and 1 of the same shape as the source mask
             random_matrix = self.rng.uniform(size=self.source.mask.shape)
             # Do bernuli experiment to see it the photons are emited for each pixel
@@ -244,7 +297,6 @@ class CodApSimulator:
                     # ignore it.
                     pass
         return self.sensor.screen
-
 
     def passes_through_slit(self, coordinates, angles):
         """
@@ -352,7 +404,9 @@ class CodApSimulator:
         return theta, phi
 
 
-def play_simulation(simulator: CodApSimulator, config_path: str, parallelize: bool=False):
+def play_simulation(
+    simulator: CodApSimulator, config_path: str, parallelize: bool = False
+):
     """Plays the simulation"""
     print("Simulating the propagation of photons through the slit...")
 
@@ -366,6 +420,7 @@ def play_simulation(simulator: CodApSimulator, config_path: str, parallelize: bo
     print("Done!")
     print("Saving results...")
     simulator.save_results(config_path)
+
 
 def plot_results(simulator: CodApSimulator):
     """
@@ -387,17 +442,13 @@ def plot_results(simulator: CodApSimulator):
 
     charge_histogram.png: A histogram of the charge values in the sensor screen.
     """
-    # Zoom-in the sensor screen and reconstruction
-    zoom_factor = simulator.options.source_to_sensor_distance / simulator.options.slit_to_sensor_distance
-    simulation_zoom_factor = zoom_factor/(np.max(simulator.source.screen.shape)/np.max(simulator.sensor.screen.shape))
-    zoomed_in_decoded_image = zoom_in_image(simulator.decoder.decoded_image, simulation_zoom_factor)
 
     # Plot the results
     fig = plt.figure(figsize=(20, 20))
     plt.subplot(2, 2, 1)
     vmin, vmax = 0, float(np.max(simulator.source.screen))
     plt.title("Source Photons")
-    im = plt.imshow(simulator.source.screen, vmin=vmin, vmax=vmax, cmap = "viridis")
+    im = plt.imshow(simulator.source.screen, vmin=vmin, vmax=vmax, cmap="viridis")
     cbar_ax = fig.add_axes([0.05, 0.54, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
     plt.subplot(2, 2, 2)
@@ -406,13 +457,13 @@ def plot_results(simulator: CodApSimulator):
     plt.subplot(2, 2, 3)
     vmin, vmax = 0, np.max(simulator.sensor.screen)
     plt.title("Detected Photons")
-    im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax, cmap = "viridis")
+    im = plt.imshow(simulator.sensor.screen, vmin=vmin, vmax=vmax, cmap="viridis")
     cbar_ax = fig.add_axes([0.05, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
     plt.subplot(2, 2, 4)
-    vmin, vmax = 0, np.max(zoomed_in_decoded_image)
+    vmin, vmax = 0, np.max(simulator.decoder.rescaled_decoded_image)
     plt.title("Zoomed-In Reconstructed Image")
-    im = plt.imshow(zoomed_in_decoded_image, vmin=vmin, vmax=vmax, cmap = "viridis")
+    im = plt.imshow(simulator.decoder.rescaled_decoded_image, vmin=vmin, vmax=vmax, cmap="viridis")
     cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.3])
     fig.colorbar(im, cax=cbar_ax)
     # Save figure
@@ -421,9 +472,10 @@ def plot_results(simulator: CodApSimulator):
     plt.figure(figsize=(10, 10))
     plt.hist(
         simulator.sensor.screen.flatten(),
-        bins=np.arange(0, np.round(np.max(simulator.sensor.screen)), 0.05)
+        bins=np.arange(0, np.round(np.max(simulator.sensor.screen)), 0.05),
     )
     plt.savefig(os.path.join(simulator.saving_dir, "charge_histogram.png"))
+
 
 def main():
     """
@@ -439,11 +491,18 @@ def main():
     )
     args = parser.parse_args()
 
-    source, slit, sensor, decoder, options = get_objects_from_config(config_path=args.config)
-    simulator = CodApSimulator(source=source, slit=slit, sensor=sensor, options=options, decoder=decoder)
+    source, slit, sensor, decoder, options = get_objects_from_config(
+        config_path=args.config
+    )
+    simulator = CodApSimulator(
+        source=source, slit=slit, sensor=sensor, options=options, decoder=decoder
+    )
 
-    play_simulation(simulator=simulator, config_path=args.config, parallelize=args.parallelize)
+    play_simulation(
+        simulator=simulator, config_path=args.config, parallelize=args.parallelize
+    )
     plot_results(simulator)
+
 
 if __name__ == "__main__":
     main()
