@@ -1,5 +1,3 @@
-
-
 """
 This module provides functions for calculating and visualizing metrics related to 
 the reconstruction of an image from a coded aperture. The metrics include mean squared 
@@ -20,6 +18,7 @@ Functions:
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.interpolate import RectBivariateSpline
 from typing import Callable
 from utils import SourceScreen, Decoder
 
@@ -70,9 +69,7 @@ def calculate_mse(
     Returns a value between 0 and 1, the lower the better the reconstruction is.
     """
     renormalized_source = renormalization_method(source.screen)
-    renormalized_decoded_image = renormalization_method(
-        decoder.decoded_image
-    )
+    renormalized_decoded_image = renormalization_method(decoder.rescaled_decoded_image)
     mse = np.mean((renormalized_source - renormalized_decoded_image) ** 2)
     return mse
 
@@ -98,9 +95,7 @@ def calculate_histogram_spread(
     The closer to 1, the better the reconstruction is.
     """
     renormalized_source = renormalization_method(source.screen)
-    renormalized_decoded_image = renormalization_method(
-        decoder.decoded_image
-    )
+    renormalized_decoded_image = renormalization_method(decoder.rescaled_decoded_image)
     renormalized_source_hs = np.quantile(renormalized_source, 0.75) - np.quantile(
         renormalized_source, 0.25
     )
@@ -119,9 +114,7 @@ def plot_intensity_profile(
     Plots the intensity profile of the screen.
     """
 
-    renormalized_decoded_image = renormalization_method(
-        decoder.decoded_image
-    )
+    renormalized_decoded_image = renormalization_method(decoder.rescaled_decoded_image)
     renormalized_source = renormalization_method(source.screen)
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
     plt.hist(
