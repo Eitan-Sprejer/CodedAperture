@@ -198,11 +198,17 @@ class CodApSimulator:
 
 
     def simulate_photons(self, args: tuple):
-    
         num_photons, pbar_pos = args
-        # Find the coordinates of non-zero elements in the source mask
-        i_coords, j_coords = np.where(self.source.mask > 0)
-        for _ in tqdm(range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos):
+
+        for i in tqdm(range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos):
+            # Sample a matrix of uniform random numbers between 0 and 1 of the same shape as the source mask
+            random_matrix = self.rng.uniform(size=self.source.mask.shape)
+            # Do bernuli experiment to see it the photons are emited for each pixel
+            emitted_photons = (random_matrix < self.source.mask).astype(int)
+            
+            # Find the coordinates of non-zero elements in the source mask
+            i_coords, j_coords = np.where(emitted_photons == 1)
+            
             # Sample the angles for the photon
             theta, phi = self.sample_angles()
 
