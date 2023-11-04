@@ -58,4 +58,4 @@ def run_mura_slit_size_experiment(config_path: str, mura_rank_list: list[int]):
 
 if __name__ == '__main__':
     CONFIG_PATH = 'configs/mura_experiment.json'
-    run_mura_slit_size_experiment(CONFIG_PATH, mura_rank_list=np.arange(1, 8, 2))
+    run_mura_slit_size_experiment(CONFIG_PATH, mura_rank_list=np.arange(1, 9, 1))
