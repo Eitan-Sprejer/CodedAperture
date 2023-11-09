@@ -56,6 +56,27 @@ def run_mura_slit_size_experiment(config_path: str, mura_rank_list: list[int]):
         # Remove the modified config file
         os.remove(f'modified_configs/{config_name}.json')
 
+def run_field_of_view_experiment(config_path: str, field_of_view_list: list[float]):
+    """
+    
+    """
+    # Name the config as the experiment.
+    config_name = 'field_of_view_experiment'
+    for field_of_view in field_of_view_list:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        config['options']['field_of_view']['automatically_set_slit_to_sensor_distance'] = True
+        config['options']['field_of_view']['fully_coded_field_of_view'] = field_of_view
+        config['options']['name'] = f"{config['options']['name']} | {field_of_view}"
+        with open(f'modified_configs/{config_name}.json', 'w') as f:
+            json.dump(config, f, indent=4)
+
+        # Run the experiment with the modified config file
+        os.system(f'python experiment.py --config modified_configs/{config_name}.json --parallelize')
+        # Remove the modified config file
+        os.remove(f'modified_configs/{config_name}.json')
+
 if __name__ == '__main__':
     CONFIG_PATH = 'configs/mura_experiment.json'
-    run_mura_slit_size_experiment(CONFIG_PATH, mura_rank_list=np.arange(1, 9, 1))
+    # run_mura_slit_size_experiment(CONFIG_PATH, mura_rank_list=np.arange(1, 9, 1))
+    run_field_of_view_experiment(CONFIG_PATH, field_of_view_list=np.linspace(1, 40, 10))
