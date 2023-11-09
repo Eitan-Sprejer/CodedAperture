@@ -121,6 +121,12 @@ class CodApSimulator:
         self.decoder = decoder
 
         # Post processing attributes
+        ### Set the slit to sensor distance automatically if required
+        if self.options.field_of_view['automatically_set_slit_to_sensor_distance']:
+            self.options.set_slit_to_sensor_distance(
+                self.slit.mask_size, self.sensor.mask_size
+            )
+        ### Set the angle bounds automatically if required
         if self.options.automatic_angles:
             self.options.set_angle_bounds(self.source.mask_size, self.slit.mask_size)
 
@@ -202,8 +208,9 @@ class CodApSimulator:
                 self.decoder.decoded_image, simulation_zoom_factor
             )
         elif simulation_zoom_factor < 1:
+            zoom_out_factor = 1 / simulation_zoom_factor # The function is coded that way
             zoomed_decoded_image = zoom_out_image(
-                self.decoder.decoded_image, simulation_zoom_factor
+                self.decoder.decoded_image, zoom_out_factor
             )
         else:
             zoomed_decoded_image = self.decoder.decoded_image
