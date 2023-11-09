@@ -4,6 +4,10 @@
         "add_noise": true,
         "source_to_slit_distance": 1000,
         "slit_to_sensor_distance": 100,
+        "field_of_view": {
+            "automatically_set_slit_to_sensor_distance": true,
+            "fully_coded_field_of_view": 20
+        },
         "inter_pixel_distance": 0.1,
         "theta_bounds": [0, 360],
         "phi_bounds": [0, 90],
@@ -21,7 +25,7 @@
         "mask_size": [1000, 1000],
         "mask_type": "phi",
         "mask_width": 40,
-        "photons_per_pixel": 5000
+        "photons_per_pixel": 500
     },
     "slit": {
         "mask_size": [100, 100],
