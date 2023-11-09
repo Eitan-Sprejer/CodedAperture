@@ -93,11 +93,11 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
         The zoomed out image
     """
 
-    zoom_out_factor = int(zoom_out_factor)
+    # zoom_out_factor = int(zoom_out_factor)
 
     # Calculate the new dimensions
-    new_rows = image.shape[0] // zoom_out_factor
-    new_cols = image.shape[1] // zoom_out_factor
+    new_rows = int(image.shape[0] // zoom_out_factor)
+    new_cols = int(image.shape[1] // zoom_out_factor)
 
     # Create an empty image with the new dimensions
     downsampled_image = np.empty((new_rows, new_cols), dtype=image.dtype)
@@ -106,8 +106,8 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
     for i in range(new_rows):
         for j in range(new_cols):
             block = image[
-                i * zoom_out_factor : (i + 1) * zoom_out_factor,
-                j * zoom_out_factor : (j + 1) * zoom_out_factor,
+                int(np.floor(i * zoom_out_factor)) : int(np.ceil((i + 1) * zoom_out_factor)),
+                int(np.floor(j * zoom_out_factor)) : int(np.ceil((j + 1) * zoom_out_factor)),
             ]
             downsampled_image[i, j] = np.mean(block)
 
@@ -123,8 +123,6 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
     # Place the downsampled image in the padded image
     padded_image[start_row:end_row, start_col:end_col] = downsampled_image
 
-    # Plot the downsampled image
-    plt.imshow(padded_image)
     return padded_image
 
 
@@ -223,6 +221,7 @@ class Options:
     add_noise: bool
     source_to_slit_distance: float
     slit_to_sensor_distance: float
+    field_of_view: dict
     inter_pixel_distance: float
     theta_bounds: list
     phi_bounds: list
@@ -252,6 +251,28 @@ class Options:
         # Set the maximum phi as the upper bound
         self.phi_bounds[1] = max_phi
 
+    def set_slit_to_sensor_distance(
+        self, slit_size: float, sensor_size: float
+    ):
+        """
+        Automatically sets the sensor to slit distance so that the Field of View
+        is set to the one passed in the experiment config file.
+        """
+        theta = (self.field_of_view['fully_coded_field_of_view'] / 2) * (np.pi / 180)
+        # If the sensor is smaller than the slit, the sensor is taken into account
+        # to calculate the distance.
+        if np.min(sensor_size) < np.min(slit_size):
+            sensor_to_origin_distance = np.min(sensor_size) / (2 * np.tan(theta))
+            slit_to_origin_distance = np.min(slit_size) / (2 * np.tan(theta))
+            self.slit_to_sensor_distance = (
+                slit_to_origin_distance - sensor_to_origin_distance
+            )
+            self.source_to_sensor_distance = self.source_to_slit_distance + self.slit_to_sensor_distance
+        else:
+            self.slit_to_sensor_distance = (
+                np.min(slit_size) / (2 * np.tan(theta))
+            )
+            self.source_to_sensor_distance = self.source_to_slit_distance + self.slit_to_sensor_distance
 
 def coordinates2positions(
     mask_shape: np.ndarray, options: Options, coordinates: np.ndarray
