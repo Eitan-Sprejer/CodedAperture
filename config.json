@@ -1,14 +1,13 @@
 {
     "options": {
-        "name": "testing",
+        "name": "testing_dif_resolutions",
         "add_noise": true,
-        "source_to_slit_distance": 1000,
+        "source_to_slit_distance": 500,
         "slit_to_sensor_distance": 100,
         "field_of_view": {
-            "automatically_set_slit_to_sensor_distance": true,
+            "automatically_set_slit_to_sensor_distance": false,
             "fully_coded_field_of_view": 20
         },
-        "inter_pixel_distance": 0.1,
         "theta_bounds": [0, 360],
         "phi_bounds": [0, 90],
         "automatic_angles": true,
@@ -22,15 +21,17 @@
         }
     },
     "source": {
-        "mask_size": [1000, 1000],
-        "mask_type": "phi",
-        "mask_width": 40,
-        "photons_per_pixel": 500
+        "mask_size": [100, 100],
+        "mask_resolution": [1000, 1000],
+        "mask_type": "frame",
+        "mask_width": 100,
+        "photons_per_pixel": 5000
     },
     "slit": {
-        "mask_size": [100, 100],
-        "mask_type": "frame",
-        "mask_width": 5,
+        "mask_size": [50, 50],
+        "mask_resolution": [73, 73],
+        "mask_type": "mura",
+        "mask_width": 100,
         "mura_config": {
             "rank": 8,
             "tile": 0,
@@ -39,7 +40,8 @@
     },
     "sensor": {
         "mask_size": [100, 100],
-        "type": "skipper",
+        "mask_resolution": [1000, 1000],
+        "type": "perfect",
         "exposure_time": 50,
         "skipper": {
             "readout_noise": 0.01,
