@@ -124,11 +124,11 @@ class CodApSimulator:
         ### Set the slit to sensor distance automatically if required
         if self.options.field_of_view['automatically_set_slit_to_sensor_distance']:
             self.options.set_slit_to_sensor_distance(
-                self.slit.mask_size, self.sensor.mask_size
+                self.slit.mask_size, self.sensor.mask_resolution
             )
         ### Set the angle bounds automatically if required
         if self.options.automatic_angles:
-            self.options.set_angle_bounds(self.source.mask_size, self.slit.mask_size)
+            self.options.set_angle_bounds(self.source.mask_resolution, self.slit.mask_resolution)
 
         # Initializing results matrices
         self.decoder.decoding_pattern = np.zeros_like(self.slit.mask)
@@ -222,7 +222,9 @@ class CodApSimulator:
         f = RectBivariateSpline(x, y, zoomed_decoded_image, s=0, bbox=[None, None, None, None])
         xnew = np.linspace(0, 1, self.source.screen.shape[0])
         ynew = np.linspace(0, 1, self.source.screen.shape[1])
-        self.decoder.rescaled_decoded_image = f(xnew, ynew)
+        # self.decoder.rescaled_decoded_image = f(xnew, ynew)
+        print('WARNING! Rescaled decoded image is not working properly, so I turned it off!')
+        self.decoder.rescaled_decoded_image = self.decoder.decoded_image
 
     def make_image(self, parallelize: bool = False):
         """Simulates the propagation of photons through the slit"""
@@ -262,7 +264,7 @@ class CodApSimulator:
             range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos
         ):
             # Sample a matrix of uniform random numbers between 0 and 1 of the same shape as the source mask
-            random_matrix = self.rng.uniform(size=self.source.mask.shape)
+            random_matrix = self.rng.uniform(size=self.source.mask_resolution)
             # Do bernuli experiment to see it the photons are emited for each pixel
             emitted_photons = (random_matrix < self.source.mask).astype(int)
 
@@ -364,8 +366,8 @@ class CodApSimulator:
 
         # Convert the coordinates on the source to the x-y positions
         positions = coordinates2positions(
-            mask_shape=np.array(self.source.mask_size),
-            options=self.options,
+            mask_resolution=np.array(self.source.mask_resolution),
+            mask_size=self.source.mask_size,
             coordinates=coordinates[:, :2],
         )
 
@@ -388,14 +390,14 @@ class CodApSimulator:
         # Compute the pixel coordinates of the intersections for all photons.
         if z_distance == self.options.source_to_sensor_distance:
             intersection_pixel_coordinates = positions2coordinates(
-                mask_shape=self.sensor.mask_size,
-                options=self.options,
+                mask_resolution=self.sensor.mask_resolution,
+                mask_size=self.sensor.mask_size,
                 positions=intersection_vectors[:, :2],
             )
         elif z_distance == self.options.source_to_slit_distance:
             intersection_pixel_coordinates = positions2coordinates(
-                mask_shape=self.slit.mask_size,
-                options=self.options,
+                mask_resolution=self.slit.mask_resolution,
+                mask_size=self.slit.mask_size,
                 positions=intersection_vectors[:, :2],
             )
         else:
