@@ -7,7 +7,7 @@ The function decode_image is the one that finally decodes the specified image.
 
 import numpy as np
 from scipy.ndimage import convolve
-from utils import SlitScreen, SensorScreen, Decoder
+from utils import SlitScreen, SensorScreen, Decoder, upsample_image
 import scipy as sp
 
 
@@ -149,16 +149,35 @@ def fourier_image_reconstruction(
     Returns:
         Tuple[np.ndarray, np.ndarray]: The decoding pattern and the reconstructed image.
     """
+    sensor_size_to_resolution_ratio = sensor.mask_size / sensor.mask_resolution
+    slit_size_to_resolution_ratio = slit.mask_size / slit.mask_resolution
+    if np.any(sensor_size_to_resolution_ratio > slit_size_to_resolution_ratio):
+        # Upsample the sensor
+        upsample_scale = sensor_size_to_resolution_ratio / slit_size_to_resolution_ratio
+        upsampled_resolution = (sensor.mask_resolution * upsample_scale).astype(int)
+        sensor_screen = upsample_image(sensor.screen, new_width=upsampled_resolution[0], new_height=upsampled_resolution[1])
+        slit_mask = slit.mask
+    elif np.any(sensor_size_to_resolution_ratio < slit_size_to_resolution_ratio):
+        # Upsample the sensor
+        upsample_scale = slit_size_to_resolution_ratio / sensor_size_to_resolution_ratio
+        upsampled_resolution = (slit.mask_resolution * upsample_scale).astype(int)
+        slit_mask = upsample_image(slit.mask, new_width=upsampled_resolution[0], new_height=upsampled_resolution[1])
+        sensor_screen = sensor.screen
+    else:
+        sensor_screen = sensor.screen
+        slit_mask = slit.mask
+    
     decoding_pattern_ft = get_fourier_decoding_pattern(
-        slit.mask, sensor.screen, threshold=threshold
+        slit_mask=slit_mask, image=sensor_screen, threshold=threshold
     )
-    sensor_ft = sp.fft.fft2(sensor.screen)
+    sensor_ft = sp.fft.fft2(sensor_screen)
     reconstructed_image_ft = sensor_ft * decoding_pattern_ft
     reconstructed_image = sp.fft.ifft2(reconstructed_image_ft)
     decoding_pattern = sp.fft.ifft2(decoding_pattern_ft)
     # Center back the decoding_pattern
-    decoding_pattern = np.roll(decoding_pattern, -sensor.screen.shape[0] // 2, axis=0)
-    decoding_pattern = np.roll(decoding_pattern, -sensor.screen.shape[1] // 2, axis=1)
+    decoding_pattern = np.roll(decoding_pattern, -sensor_screen.shape[0] // 2, axis=0)
+    decoding_pattern = np.roll(decoding_pattern, -sensor_screen.shape[1] // 2, axis=1)
+
     return np.abs(decoding_pattern), np.abs(reconstructed_image)
 
 
