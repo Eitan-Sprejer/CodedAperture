@@ -128,7 +128,7 @@ class CodApSimulator:
             )
         ### Set the angle bounds automatically if required
         if self.options.automatic_angles:
-            self.options.set_angle_bounds(self.source.mask_resolution, self.slit.mask_resolution)
+            self.options.set_angle_bounds(self.source.mask_size, self.slit.mask_size)
 
         # Initializing results matrices
         self.decoder.decoding_pattern = np.zeros_like(self.slit.mask)
