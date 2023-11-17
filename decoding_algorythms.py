@@ -103,6 +103,39 @@ def get_fourier_decoding_pattern(
     return slit_ft_inv
 
 
+def apply_upsampling(sensor: SensorScreen, slit: SlitScreen):
+    """
+    Upsamples the sensor or the slit so that the size to resolution ratio of both
+    coinside.
+    """
+    sensor_size_to_resolution_ratio = sensor.mask_size / sensor.mask_resolution
+    slit_size_to_resolution_ratio = slit.mask_size / slit.mask_resolution
+    if np.any(sensor_size_to_resolution_ratio > slit_size_to_resolution_ratio):
+        # Upsample the sensor
+        upsample_scale = sensor_size_to_resolution_ratio / slit_size_to_resolution_ratio
+        upsampled_resolution = (sensor.mask_resolution * upsample_scale).astype(int)
+        sensor_screen = upsample_image(sensor.screen, new_width=upsampled_resolution[0], new_height=upsampled_resolution[1])
+
+        # Leave the slit as is
+        slit_mask = slit.mask
+    elif np.any(sensor_size_to_resolution_ratio < slit_size_to_resolution_ratio):
+        # Upsample the sensor
+        upsample_scale = slit_size_to_resolution_ratio / sensor_size_to_resolution_ratio
+        upsampled_resolution = (slit.mask_resolution * upsample_scale).astype(int)
+        slit_mask = upsample_image(slit.mask, new_width=upsampled_resolution[0], new_height=upsampled_resolution[1])
+
+        # Take the values to 0 and 1
+        slit_mask[slit_mask > 0.5] = 1
+        slit_mask[slit_mask <= 0.5] = 0
+
+        # Leave the sensor as is
+        sensor_screen = sensor.screen
+    else:
+        sensor_screen = sensor.screen
+        slit_mask = slit.mask
+    return sensor_screen, slit_mask
+
+
 def mura_image_reconstruction(sensor: SensorScreen, slit: SlitScreen):
     """
     Reconstructs an image using a MURA mask.
@@ -114,8 +147,12 @@ def mura_image_reconstruction(sensor: SensorScreen, slit: SlitScreen):
     Returns:
         Tuple[np.ndarray, np.ndarray]: The decoding pattern and the reconstructed image.
     """
-    decoding_pattern = get_mura_decoding_pattern(slit.mask)
-    reconstructed_image = convolve(sensor.screen, decoding_pattern, mode="wrap")
+    # Apply upsampling
+    sensor_screen, slit_mask = apply_upsampling(sensor, slit)
+
+    # Calculate the decoding pattern and reconstruct the image.
+    decoding_pattern = get_mura_decoding_pattern(slit_mask)
+    reconstructed_image = convolve(sensor_screen, decoding_pattern, mode="wrap")
     return decoding_pattern, reconstructed_image
 
 
@@ -130,8 +167,12 @@ def general_image_reconstruction(sensor: SensorScreen, slit: SlitScreen):
     Returns:
         Tuple[np.ndarray, np.ndarray]: The decoding pattern and the reconstructed image.
     """
-    decoding_pattern = get_general_decoding_pattern(slit.mask)
-    reconstructed_image = convolve(sensor.screen, decoding_pattern, mode="wrap")
+    # Apply upsampling
+    sensor_screen, slit_mask = apply_upsampling(sensor, slit)
+
+    # Calculate the decoding pattern and reconstruct the image.
+    decoding_pattern = get_general_decoding_pattern(slit_mask)
+    reconstructed_image = convolve(sensor_screen, decoding_pattern, mode="wrap")
     return decoding_pattern, reconstructed_image
 
 
@@ -149,24 +190,8 @@ def fourier_image_reconstruction(
     Returns:
         Tuple[np.ndarray, np.ndarray]: The decoding pattern and the reconstructed image.
     """
-    sensor_size_to_resolution_ratio = sensor.mask_size / sensor.mask_resolution
-    slit_size_to_resolution_ratio = slit.mask_size / slit.mask_resolution
-    if np.any(sensor_size_to_resolution_ratio > slit_size_to_resolution_ratio):
-        # Upsample the sensor
-        upsample_scale = sensor_size_to_resolution_ratio / slit_size_to_resolution_ratio
-        upsampled_resolution = (sensor.mask_resolution * upsample_scale).astype(int)
-        sensor_screen = upsample_image(sensor.screen, new_width=upsampled_resolution[0], new_height=upsampled_resolution[1])
-        slit_mask = slit.mask
-    elif np.any(sensor_size_to_resolution_ratio < slit_size_to_resolution_ratio):
-        # Upsample the sensor
-        upsample_scale = slit_size_to_resolution_ratio / sensor_size_to_resolution_ratio
-        upsampled_resolution = (slit.mask_resolution * upsample_scale).astype(int)
-        slit_mask = upsample_image(slit.mask, new_width=upsampled_resolution[0], new_height=upsampled_resolution[1])
-        sensor_screen = sensor.screen
-    else:
-        sensor_screen = sensor.screen
-        slit_mask = slit.mask
-    
+    sensor_screen, slit_mask = apply_upsampling(sensor, slit)
+
     decoding_pattern_ft = get_fourier_decoding_pattern(
         slit_mask=slit_mask, image=sensor_screen, threshold=threshold
     )
