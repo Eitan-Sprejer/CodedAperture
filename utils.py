@@ -140,7 +140,7 @@ def upsample_image(
     image: np.ndarray, new_width: int, new_height: int
 ):
      return cv2.resize(
-         image, (new_width, new_height), interpolation=cv2.INTER_CUBIC
+         image, (new_width, new_height), interpolation=cv2.INTER_AREA
      )
 
 def zoom_in_image(image: np.ndarray, zoom_in_factor: float):
