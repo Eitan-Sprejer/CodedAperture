@@ -103,18 +103,24 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
     # Create an empty image with the new dimensions
     downsampled_image = np.empty((new_rows, new_cols), dtype=image.dtype)
 
+    # Resize the image using the calculated dimensions
+    resized_img = cv2.resize(image,(new_cols, new_rows))
+
+    # Convert the resized image back to a NumPy array
+    resized_array = np.array(resized_img)
+
     # Populate the downsampled image by taking the average of blocks from the original image
-    for i in range(new_rows):
-        for j in range(new_cols):
-            block = image[
-                int(np.floor(i * zoom_out_factor)) : int(
-                    np.ceil((i + 1) * zoom_out_factor)
-                ),
-                int(np.floor(j * zoom_out_factor)) : int(
-                    np.ceil((j + 1) * zoom_out_factor)
-                ),
-            ]
-            downsampled_image[i, j] = np.mean(block)
+   # for i in range(new_rows):
+   #     for j in range(new_cols):
+   #         block = image[
+   #             int(np.floor(i * zoom_out_factor)) : int(
+   #                 np.ceil((i + 1) * zoom_out_factor)
+   #             ),
+   #             int(np.floor(j * zoom_out_factor)) : int(
+   #                 np.ceil((j + 1) * zoom_out_factor)
+   #             ),
+   #         ]
+   #         downsampled_image[i, j] = np.mean(block)
 
     # Zero pad the edges to take the downsampled image back to the original size, centering it
     padded_image = np.zeros_like(image)
@@ -126,7 +132,7 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
     end_col = start_col + downsampled_image.shape[1]
 
     # Place the downsampled image in the padded image
-    padded_image[start_row:end_row, start_col:end_col] = downsampled_image
+    padded_image[start_row:end_row, start_col:end_col] = resized_array
 
     return padded_image
 
