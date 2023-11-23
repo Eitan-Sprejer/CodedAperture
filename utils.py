@@ -149,9 +149,13 @@ def zoom_in_image(image: np.ndarray, zoom_in_factor: float):
     new_height = int(image.shape[0] * zoom_in_factor)
 
     # Resize the image using OpenCV
-    zoomed_image = upsample_image(
-        image, new_width, new_height
-    )
+ #   zoomed_image = upsample_image(
+ #       image, new_width, new_height
+ #   )
+
+    cv2.resize(
+         image, (new_width, new_height), interpolation=cv2.INTER_AREA
+     )
 
     # Calculate the cropping parameters with floating-point values
     left = (new_width - image.shape[1]) / 2.0
