@@ -1,8 +1,8 @@
 {
     "options": {
-        "name": "testing_dif_resolutions",
+        "name": "pointy_frame | mura | perfect",
         "add_noise": true,
-        "source_to_slit_distance": 500,
+        "source_to_slit_distance": 1000,
         "slit_to_sensor_distance": 100,
         "field_of_view": {
             "automatically_set_slit_to_sensor_distance": false,
@@ -17,30 +17,30 @@
         "decode_img": true,
         "method": "fourier",
         "fourier_config": {
-            "threshold": 1e-2
+            "threshold": 7e-3
         }
     },
     "source": {
-        "mask_size": [100, 100],
+        "mask_size": [1000, 1000],
         "mask_resolution": [1000, 1000],
-        "mask_type": "frame",
+        "mask_type": "pointy_frame_pattern",
         "mask_width": 100,
         "photons_per_pixel": 5000
     },
     "slit": {
-        "mask_size": [50, 50],
-        "mask_resolution": [73, 73],
+        "mask_size": [37, 37],
+        "mask_resolution": [37, 37],
         "mask_type": "mura",
         "mask_width": 100,
         "mura_config": {
-            "rank": 8,
+            "rank": 4,
             "tile": 0,
             "center": true
         }
     },
     "sensor": {
-        "mask_size": [100, 100],
-        "mask_resolution": [1000, 1000],
+        "mask_size": [200, 200],
+        "mask_resolution": [500, 500],
         "type": "perfect",
         "exposure_time": 50,
         "skipper": {
