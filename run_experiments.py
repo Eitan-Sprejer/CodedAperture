@@ -76,7 +76,48 @@ def run_field_of_view_experiment(config_path: str, field_of_view_list: list[floa
         # Remove the modified config file
         os.remove(f'modified_configs/{config_name}.json')
 
+def run_sensor_resolution_change_experiment(config_path: str, sensor_resolutions: list[list[int]]):
+
+    # Name the config as the experiment.
+    config_name = 'sensor_resolution_change_experiment'
+    for sensor_resolution in sensor_resolutions:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        config['sensor']['mask_resolution'] = sensor_resolution
+        config['options']['name'] = f"{config['options']['name']} | {sensor_resolution}"
+        with open(f'modified_configs/{config_name}.json', 'w') as f:
+            json.dump(config, f, indent=4)
+
+        # Run the experiment with the modified config file
+        os.system(f'python experiment.py --config modified_configs/{config_name}.json --parallelize')
+        # Remove the modified config file
+        os.remove(f'modified_configs/{config_name}.json')
+
+def run_reconstruction_method_experiment(config_path: str):
+
+    # List available reconstruction methods
+    reconstruction_methods = ['fourier', 'mura', 'general']
+    
+    # Name the config as the experiment.
+    config_name = 'reconstruction_method_experiment'
+    for method in reconstruction_methods:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        config['decoder']['method'] = method
+        config['options']['name'] = f"{config['options']['name']} | {method}"
+        with open(f'modified_configs/{config_name}.json', 'w') as f:
+            json.dump(config, f, indent=4)
+
+        # Run the experiment with the modified config file
+        os.system(f'python experiment.py --config modified_configs/{config_name}.json --parallelize')
+        # Remove the modified config file
+        os.remove(f'modified_configs/{config_name}.json')
+
 if __name__ == '__main__':
-    CONFIG_PATH = 'configs/mura_experiment.json'
+    # CONFIG_PATH = 'configs/mura_experiment.json'
     # run_mura_slit_size_experiment(CONFIG_PATH, mura_rank_list=np.arange(1, 9, 1))
-    run_field_of_view_experiment(CONFIG_PATH, field_of_view_list=np.linspace(1, 40, 10))
+    # run_field_of_view_experiment(CONFIG_PATH, field_of_view_list=np.linspace(1, 40, 10))
+    # CONFIG_PATH = 'configs/resolution_testing.json'
+    # run_sensor_resolution_change_experiment(CONFIG_PATH, sensor_resolutions=[[200, 200], [400, 200], [600, 200], [800, 200], [1000, 200]])
+    CONFIG_PATH = 'config.json'
+    run_reconstruction_method_experiment(CONFIG_PATH)
