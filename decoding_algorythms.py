@@ -114,15 +114,15 @@ def apply_upsampling(sensor: SensorScreen, slit: SlitScreen):
         # Upsample the sensor
         upsample_scale = sensor_size_to_resolution_ratio / slit_size_to_resolution_ratio
         upsampled_resolution = (sensor.mask_resolution * upsample_scale).astype(int)
-        sensor_screen = upsample_image(sensor.screen, new_width=upsampled_resolution[0], new_height=upsampled_resolution[1])
+        sensor_screen = upsample_image(sensor.screen, new_height=upsampled_resolution[0], new_width=upsampled_resolution[1])
 
         # Leave the slit as is
         slit_mask = slit.mask
     elif np.any(sensor_size_to_resolution_ratio < slit_size_to_resolution_ratio):
-        # Upsample the sensor
+        # Upsample the slit
         upsample_scale = slit_size_to_resolution_ratio / sensor_size_to_resolution_ratio
         upsampled_resolution = (slit.mask_resolution * upsample_scale).astype(int)
-        slit_mask = upsample_image(slit.mask, new_width=upsampled_resolution[0], new_height=upsampled_resolution[1])
+        slit_mask = upsample_image(slit.mask, new_height=upsampled_resolution[0], new_width=upsampled_resolution[1])
 
         # Take the values to 0 and 1
         slit_mask[slit_mask > 0.5] = 1
