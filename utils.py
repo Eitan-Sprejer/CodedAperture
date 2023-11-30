@@ -94,8 +94,6 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
         The zoomed out image
     """
 
-    # zoom_out_factor = int(zoom_out_factor)
-
     # Calculate the new dimensions
     new_rows = int(image.shape[0] // zoom_out_factor)
     new_cols = int(image.shape[1] // zoom_out_factor)
@@ -104,23 +102,10 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
     downsampled_image = np.empty((new_rows, new_cols), dtype=image.dtype)
 
     # Resize the image using the calculated dimensions
-    resized_img = cv2.resize(image,(new_cols, new_rows))
+    resized_image = cv2.resize(image,(new_cols, new_rows))
 
     # Convert the resized image back to a NumPy array
-    resized_array = np.array(resized_img)
-
-    # Populate the downsampled image by taking the average of blocks from the original image
-   # for i in range(new_rows):
-   #     for j in range(new_cols):
-   #         block = image[
-   #             int(np.floor(i * zoom_out_factor)) : int(
-   #                 np.ceil((i + 1) * zoom_out_factor)
-   #             ),
-   #             int(np.floor(j * zoom_out_factor)) : int(
-   #                 np.ceil((j + 1) * zoom_out_factor)
-   #             ),
-   #         ]
-   #         downsampled_image[i, j] = np.mean(block)
+    resized_image = np.array(resized_image)
 
     # Zero pad the edges to take the downsampled image back to the original size, centering it
     padded_image = np.zeros_like(image)
@@ -132,7 +117,7 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
     end_col = start_col + downsampled_image.shape[1]
 
     # Place the downsampled image in the padded image
-    padded_image[start_row:end_row, start_col:end_col] = resized_array
+    padded_image[start_row:end_row, start_col:end_col] = resized_image
 
     return padded_image
 
@@ -149,13 +134,9 @@ def zoom_in_image(image: np.ndarray, zoom_in_factor: float):
     new_height = int(image.shape[0] * zoom_in_factor)
 
     # Resize the image using OpenCV
- #   zoomed_image = upsample_image(
- #       image, new_width, new_height
- #   )
-
-    cv2.resize(
-         image, (new_width, new_height), interpolation=cv2.INTER_AREA
-     )
+    zoomed_image = upsample_image(
+        image, new_width, new_height
+    )
 
     # Calculate the cropping parameters with floating-point values
     left = (new_width - image.shape[1]) / 2.0
