@@ -200,43 +200,30 @@ class CodApSimulator:
         self.options.simulation_zoom_factor = zoom_factor / (
             self.source.mask_size / self.sensor.mask_size
         )
-        if np.all(self.options.simulation_zoom_factor > 1):
-            self.decoder.zoomed_decoded_image = zoom_in_image(
-                self.decoder.decoded_image, self.options.simulation_zoom_factor
-            )
-        elif np.all(self.options.simulation_zoom_factor < 1):
-            zoom_out_factor = 1 / self.options.simulation_zoom_factor # The function is coded that way
-            self.decoder.zoomed_decoded_image = zoom_out_image(
-                self.decoder.decoded_image, zoom_out_factor
-            )
-        elif self.options.simulation_zoom_factor[0] > 1 and self.options.simulation_zoom_factor[1] < 1:
-            self.decoder.zoomed_decoded_image = zoom_in_image(
-                self.decoder.decoded_image, [self.options.simulation_zoom_factor[0], 1]
-            )
-            self.decoder.zoomed_decoded_image = zoom_out_image(
-                self.decoder.zoomed_decoded_image, [1, 1/self.options.simulation_zoom_factor[1]]
-            )
+        self.process_zoom()
 
-        elif self.options.simulation_zoom_factor[0] < 1 and self.options.simulation_zoom_factor[1] > 1:
-            self.decoder.zoomed_decoded_image = zoom_out_image(
-                self.decoder.decoded_image, [1/self.options.simulation_zoom_factor[0], 1]
-            )
-            self.decoder.zoomed_decoded_image = zoom_in_image(
-                self.decoder.zoomed_decoded_image, [1, self.options.simulation_zoom_factor[1]]
-            )
-        else:
+    def process_zoom(self):
+        if np.all(self.options.simulation_zoom_factor == 1):
+            # No zooming needed
             self.decoder.zoomed_decoded_image = self.decoder.decoded_image
+            return
 
-        # Reshape the image to the shape of the sensor screen using 2d spline interpolation
+        # Initialize with the original decoded image
+        zoomed_image = self.decoder.decoded_image
 
-        x = np.linspace(0, 1, self.decoder.zoomed_decoded_image.shape[0])
-        y = np.linspace(0, 1, self.decoder.zoomed_decoded_image.shape[1])
-        f = RectBivariateSpline(x, y, self.decoder.zoomed_decoded_image, s=0, bbox=[None, None, None, None])
-        xnew = np.linspace(0, 1, self.source.screen.shape[0])
-        ynew = np.linspace(0, 1, self.source.screen.shape[1])
-        self.decoder.rescaled_decoded_image = f(xnew, ynew)
-        # print('WARNING! Rescaled decoded image is not working properly, so I turned it off!')
-        # self.decoder.rescaled_decoded_image = self.decoder.decoded_image
+        # Process X and Y zoom factors separately
+        for axis, zoom_factor in enumerate(self.options.simulation_zoom_factor):
+            if zoom_factor > 1:
+                # Zoom in for this axis
+                zoomed_image = zoom_in_image(zoomed_image, [zoom_factor if axis == 0 else 1,
+                                                            zoom_factor if axis == 1 else 1])
+            elif zoom_factor < 1:
+                # Zoom out for this axis
+                zoom_out_factor = 1 / zoom_factor
+                zoomed_image = zoom_out_image(zoomed_image, [zoom_out_factor if axis == 0 else 1,
+                                                            zoom_out_factor if axis == 1 else 1])
+
+        self.decoder.zoomed_decoded_image = zoomed_image
 
 
     def make_image(self, parallelize: bool = False):
