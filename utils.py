@@ -14,6 +14,7 @@ from typing import Union
 from image_preprocessing import process_image
 from PIL import Image
 import cv2
+from numpy.typing import ArrayLike
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
@@ -75,8 +76,14 @@ def split_photons(n_photons: int, n_cores: int) -> list:
         result[i] += 1
     return result
 
+def upsample_image(
+    image: np.ndarray, new_width: int, new_height: int
+):
+     return cv2.resize(
+         image, (new_width, new_height), interpolation=cv2.INTER_AREA
+     )
 
-def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
+def zoom_out_image(image: np.ndarray, zoom_out_factor: ArrayLike):
     """
     Zooms out an image by a factor of zoom_out_factor, by taking the average of blocks of pixels,
     and then zero padding the edges to take it back to the original size.
@@ -95,8 +102,8 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
     """
 
     # Calculate the new dimensions
-    new_rows = int(image.shape[0] // zoom_out_factor)
-    new_cols = int(image.shape[1] // zoom_out_factor)
+    new_rows = int(image.shape[0] // zoom_out_factor[0])
+    new_cols = int(image.shape[1] // zoom_out_factor[1])
 
     # Create an empty image with the new dimensions
     downsampled_image = np.empty((new_rows, new_cols), dtype=image.dtype)
@@ -121,17 +128,11 @@ def zoom_out_image(image: np.ndarray, zoom_out_factor: float):
 
     return padded_image
 
-def upsample_image(
-    image: np.ndarray, new_width: int, new_height: int
-):
-     return cv2.resize(
-         image, (new_width, new_height), interpolation=cv2.INTER_AREA
-     )
 
-def zoom_in_image(image: np.ndarray, zoom_in_factor: float):
+def zoom_in_image(image: np.ndarray, zoom_in_factor: ArrayLike):
     # Calculate the new size while maintaining the same resolution
-    new_width = int(image.shape[1] * zoom_in_factor)
-    new_height = int(image.shape[0] * zoom_in_factor)
+    new_width = int(image.shape[1] * zoom_in_factor[1])
+    new_height = int(image.shape[0] * zoom_in_factor[0])
 
     # Resize the image using OpenCV
     zoomed_image = upsample_image(

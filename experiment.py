@@ -71,7 +71,14 @@ python experiment.py --config path/to/config.json --parallelize
 
 import os
 import shutil
-import json
+import pickle
+import sys
+import multiprocessing
+import argparse
+import numpy as np
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+from scipy.interpolate import RectBivariateSpline
 from decoding_algorythms import decode_image
 from utils import (
     split_photons,
@@ -86,16 +93,6 @@ from utils import (
     SensorScreen,
     Decoder,
 )
-import numpy as np
-from tqdm import tqdm
-import argparse
-import matplotlib.pyplot as plt
-from scipy import ndimage
-from scipy.signal import convolve2d, correlate
-from scipy.interpolate import RectBivariateSpline
-import pickle
-import sys
-import multiprocessing
 
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
@@ -200,17 +197,32 @@ class CodApSimulator:
             self.options.source_to_sensor_distance
             / self.options.slit_to_sensor_distance
         )
-        simulation_zoom_factor = zoom_factor / (
-            np.max(self.source.mask_size) / np.max(self.sensor.mask_size)
+        self.options.simulation_zoom_factor = zoom_factor / (
+            self.source.mask_size / self.sensor.mask_size
         )
-        if simulation_zoom_factor > 1:
+        if np.all(self.options.simulation_zoom_factor > 1):
             self.decoder.zoomed_decoded_image = zoom_in_image(
-                self.decoder.decoded_image, simulation_zoom_factor
+                self.decoder.decoded_image, self.options.simulation_zoom_factor
             )
-        elif simulation_zoom_factor < 1:
-            zoom_out_factor = 1 / simulation_zoom_factor # The function is coded that way
+        elif np.all(self.options.simulation_zoom_factor < 1):
+            zoom_out_factor = 1 / self.options.simulation_zoom_factor # The function is coded that way
             self.decoder.zoomed_decoded_image = zoom_out_image(
                 self.decoder.decoded_image, zoom_out_factor
+            )
+        elif self.options.simulation_zoom_factor[0] > 1 and self.options.simulation_zoom_factor[1] < 1:
+            self.decoder.zoomed_decoded_image = zoom_in_image(
+                self.decoder.decoded_image, [self.options.simulation_zoom_factor[0], 1]
+            )
+            self.decoder.zoomed_decoded_image = zoom_out_image(
+                self.decoder.zoomed_decoded_image, [1, 1/self.options.simulation_zoom_factor[1]]
+            )
+
+        elif self.options.simulation_zoom_factor[0] < 1 and self.options.simulation_zoom_factor[1] > 1:
+            self.decoder.zoomed_decoded_image = zoom_out_image(
+                self.decoder.decoded_image, [1/self.options.simulation_zoom_factor[0], 1]
+            )
+            self.decoder.zoomed_decoded_image = zoom_in_image(
+                self.decoder.zoomed_decoded_image, [1, self.options.simulation_zoom_factor[1]]
             )
         else:
             self.decoder.zoomed_decoded_image = self.decoder.decoded_image
@@ -225,6 +237,7 @@ class CodApSimulator:
         self.decoder.rescaled_decoded_image = f(xnew, ynew)
         # print('WARNING! Rescaled decoded image is not working properly, so I turned it off!')
         # self.decoder.rescaled_decoded_image = self.decoder.decoded_image
+
 
     def make_image(self, parallelize: bool = False):
         """Simulates the propagation of photons through the slit"""
