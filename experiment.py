@@ -202,6 +202,13 @@ class CodApSimulator:
         )
         self.process_zoom()
 
+        x = np.linspace(0, 1, self.decoder.zoomed_decoded_image.shape[0])
+        y = np.linspace(0, 1, self.decoder.zoomed_decoded_image.shape[1])
+        f = RectBivariateSpline(x, y, self.decoder.zoomed_decoded_image, s=0, bbox=[None, None, None, None])
+        xnew = np.linspace(0, 1, self.source.screen.shape[0])
+        ynew = np.linspace(0, 1, self.source.screen.shape[1])
+        self.decoder.rescaled_decoded_image = f(xnew, ynew)
+
     def process_zoom(self):
         if np.all(self.options.simulation_zoom_factor == 1):
             # No zooming needed
