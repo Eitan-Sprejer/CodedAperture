@@ -27,7 +27,7 @@ def get_mura_decoding_pattern(slit_mask: np.ndarray):
             cent_i = int(i - (slit_mask.shape[0] - 1) / 2)
             cent_j = int(j - (slit_mask.shape[1] - 1) / 2)
             # TEMPORARY FIX TO SEE IF THE ELEMENTS ARE IN THE DIAGONAL FOR A NON-SQUARE MATRIX.
-            if int(cent_i + cent_j*slit_mask.shape[0]/slit_mask.shape[1]) == 0:
+            if abs(cent_i + cent_j*slit_mask.shape[0]/slit_mask.shape[1]) < 1:
                 decoding_pattern[i, j] = 1
             else:
                 if slit_mask[i, j] == 1:
