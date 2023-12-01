@@ -201,30 +201,30 @@ class CodApSimulator:
             / self.options.slit_to_sensor_distance
         )
         simulation_zoom_factor = zoom_factor / (
-            np.max(self.source.screen.shape) / np.max(self.sensor.screen.shape)
+            np.max(self.source.mask_size) / np.max(self.sensor.mask_size)
         )
         if simulation_zoom_factor > 1:
-            zoomed_decoded_image = zoom_in_image(
+            self.decoder.zoomed_decoded_image = zoom_in_image(
                 self.decoder.decoded_image, simulation_zoom_factor
             )
         elif simulation_zoom_factor < 1:
             zoom_out_factor = 1 / simulation_zoom_factor # The function is coded that way
-            zoomed_decoded_image = zoom_out_image(
+            self.decoder.zoomed_decoded_image = zoom_out_image(
                 self.decoder.decoded_image, zoom_out_factor
             )
         else:
-            zoomed_decoded_image = self.decoder.decoded_image
+            self.decoder.zoomed_decoded_image = self.decoder.decoded_image
 
         # Reshape the image to the shape of the sensor screen using 2d spline interpolation
 
-        x = np.linspace(0, 1, zoomed_decoded_image.shape[0])
-        y = np.linspace(0, 1, zoomed_decoded_image.shape[1])
-        f = RectBivariateSpline(x, y, zoomed_decoded_image, s=0, bbox=[None, None, None, None])
+        x = np.linspace(0, 1, self.decoder.zoomed_decoded_image.shape[0])
+        y = np.linspace(0, 1, self.decoder.zoomed_decoded_image.shape[1])
+        f = RectBivariateSpline(x, y, self.decoder.zoomed_decoded_image, s=0, bbox=[None, None, None, None])
         xnew = np.linspace(0, 1, self.source.screen.shape[0])
         ynew = np.linspace(0, 1, self.source.screen.shape[1])
-        # self.decoder.rescaled_decoded_image = f(xnew, ynew)
-        print('WARNING! Rescaled decoded image is not working properly, so I turned it off!')
-        self.decoder.rescaled_decoded_image = self.decoder.decoded_image
+        self.decoder.rescaled_decoded_image = f(xnew, ynew)
+        # print('WARNING! Rescaled decoded image is not working properly, so I turned it off!')
+        # self.decoder.rescaled_decoded_image = self.decoder.decoded_image
 
     def make_image(self, parallelize: bool = False):
         """Simulates the propagation of photons through the slit"""
