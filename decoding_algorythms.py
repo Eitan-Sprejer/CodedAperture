@@ -9,6 +9,7 @@ import numpy as np
 from scipy.ndimage import convolve
 from utils import SlitScreen, SensorScreen, Decoder, upsample_image
 import scipy as sp
+import matplotlib.pyplot as plt
 
 
 def get_mura_decoding_pattern(slit_mask: np.ndarray):
@@ -35,7 +36,7 @@ def get_mura_decoding_pattern(slit_mask: np.ndarray):
                 elif slit_mask[i, j] == 0:
                     decoding_pattern[i, j] = -1
     # Renormalize the decoding pattern for the convolution
-    decoding_pattern = decoding_pattern / np.sum(decoding_pattern)
+    # decoding_pattern = decoding_pattern / np.sum(decoding_pattern)
     return decoding_pattern
 
 
@@ -58,7 +59,7 @@ def get_general_decoding_pattern(slit_mask: np.ndarray):
             elif slit_mask[i, j] == 0:
                 decoding_pattern[i, j] = transparency / (transparency - 1)
     # Renormalize the decoding pattern for the convolution
-    decoding_pattern = decoding_pattern / np.sum(decoding_pattern)
+    # decoding_pattern = decoding_pattern / np.sum(decoding_pattern)
     return decoding_pattern
 
 
