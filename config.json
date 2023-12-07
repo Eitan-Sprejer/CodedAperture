@@ -1,6 +1,6 @@
 {
     "options": {
-        "name": "pointy_frame | mura | perfect",
+        "name": "frame | tripple_pinhole | perfect",
         "add_noise": true,
         "source_to_slit_distance": 1000,
         "slit_to_sensor_distance": 100,
@@ -8,8 +8,14 @@
             "automatically_set_slit_to_sensor_distance": false,
             "fully_coded_field_of_view": 20
         },
-        "theta_bounds": [0, 360],
-        "phi_bounds": [0, 90],
+        "theta_bounds": [
+            0,
+            360
+        ],
+        "phi_bounds": [
+            0,
+            90
+        ],
         "automatic_angles": true,
         "random_seed": 42
     },
@@ -17,20 +23,32 @@
         "decode_img": true,
         "method": "fourier",
         "fourier_config": {
-            "threshold": 7e-3
+            "threshold": 0.007
         }
     },
     "source": {
-        "mask_size": [1000, 1000],
-        "mask_resolution": [1000, 1000],
-        "mask_type": "pointy_frame_pattern",
-        "mask_width": 100,
-        "photons_per_pixel": 5000
+        "mask_size": [
+            1000,
+            1000
+        ],
+        "mask_resolution": [
+            1000,
+            1000
+        ],
+        "mask_type": "frame",
+        "mask_width": 200,
+        "photons_per_pixel": 10000
     },
     "slit": {
-        "mask_size": [37, 37],
-        "mask_resolution": [37, 37],
-        "mask_type": "mura",
+        "mask_size": [
+            100,
+            100
+        ],
+        "mask_resolution": [
+            100,
+            100
+        ],
+        "mask_type": "tripple_pinhole_pattern",
         "mask_width": 100,
         "mura_config": {
             "rank": 4,
@@ -39,13 +57,19 @@
         }
     },
     "sensor": {
-        "mask_size": [200, 200],
-        "mask_resolution": [500, 500],
+        "mask_size": [
+            300,
+            300
+        ],
+        "mask_resolution": [
+            500,
+            500
+        ],
         "type": "perfect",
         "exposure_time": 50,
         "skipper": {
             "readout_noise": 0.01,
-            "dark_current": 0.00001
+            "dark_current": 1e-05
         },
         "normal_ccd": {
             "readout_noise": 3,
