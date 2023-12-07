@@ -96,8 +96,9 @@ def run_sensor_resolution_change_experiment(config_path: str, sensor_resolutions
 def run_reconstruction_method_experiment(config_path: str):
 
     # List available reconstruction methods
-    reconstruction_methods = ['fourier', 'mura', 'general']
-    
+    # reconstruction_methods = ['fourier', 'mura', 'general']
+    reconstruction_methods = ['fourier', 'general']
+
     # Name the config as the experiment.
     config_name = 'reconstruction_method_experiment'
     for method in reconstruction_methods:
@@ -119,5 +120,7 @@ if __name__ == '__main__':
     # run_field_of_view_experiment(CONFIG_PATH, field_of_view_list=np.linspace(1, 40, 10))
     # CONFIG_PATH = 'configs/resolution_testing.json'
     # run_sensor_resolution_change_experiment(CONFIG_PATH, sensor_resolutions=[[200, 200], [400, 200], [600, 200], [800, 200], [1000, 200]])
+    # CONFIG_PATH = 'config.json'
+    # run_reconstruction_method_experiment(CONFIG_PATH)
     CONFIG_PATH = 'config.json'
     run_reconstruction_method_experiment(CONFIG_PATH)
