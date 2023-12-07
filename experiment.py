@@ -267,7 +267,7 @@ class CodApSimulator:
     def simulate_photons(self, args: tuple):
         num_photons, pbar_pos = args
 
-        for _ in tqdm(
+        for i in tqdm(
             range(num_photons), desc=f"Process {os.getpid()}", position=pbar_pos
         ):
             # Sample a matrix of uniform random numbers between 0 and 1 of the same shape as the source mask
@@ -430,12 +430,14 @@ def play_simulation(
     if simulator.options.add_noise:
         print("Adding noise to the image...")
         simulator.add_noise()
+    print("Saving simulation results...")
+    simulator.save_results(config_path)
     if simulator.decoder.decode_img:
         print("Decoding Image...")
         simulator.decode_image()
+        print("Saving reconstruction results...")
+        simulator.save_results(config_path)
     print("Done!")
-    print("Saving results...")
-    simulator.save_results(config_path)
 
 
 def plot_results(simulator: CodApSimulator):
