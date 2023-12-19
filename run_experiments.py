@@ -5,23 +5,48 @@ import numpy as np
 import codedapertures as ca
 
 def run_sensor_comparison_experiment(config_path: str):
-    config_name = get_config_name(config_path)
+    config_name = "sensor_comparison_experiment"
     sensors = ['normal_ccd', 'skipper', 'perfect']
-    for sensor in sensors:
-        # Load the config file and modify the "sensor" and "name" fields
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        split_config_name = config['options']['name'].split(' | ')
-        config['sensor']['type'] = sensor
-        config['options']['name'] = f"{split_config_name[0]} | {split_config_name[1]} | {sensor}"
-        # Save the modified config file
-        with open(f'modified_configs/{config_name}.json', 'w') as f:
-            json.dump(config, f, indent=4)
-        
-        # Run the experiment with the modified config file
-        os.system(f'python experiment.py --config modified_configs/fourier_decoding_experiment.json --parallelize')
-        # Remove the modified config file
-        os.remove(f'modified_configs/{config_name}.json')
+    line_separations = np.arange(10, 105, 5)
+    for line_separation in line_separations:
+        for sensor in sensors:
+            # Load the config file and modify the "sensor" and "name" fields
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            split_config_name = config['options']['name'].split(' | ')
+            config['sensor']['type'] = sensor
+            config['source']['mask_width'] = int(line_separation)
+            config['options']['name'] = f"{split_config_name[0]} | {split_config_name[1]} | {sensor} | {line_separation}"
+            # Save the modified config file
+            with open(f'modified_configs/{config_name}.json', 'w') as f:
+                json.dump(config, f, indent=4)
+
+            # Run the experiment with the modified config file
+            os.system(f'python experiment.py --config modified_configs/{config_name}.json --parallelize')
+            # Remove the modified config file
+            os.remove(f'modified_configs/{config_name}.json')
+
+def run_sensor_comparison_lambda_experiment(config_path: str):
+    config_name = "sensor_comparison_lambda_experiment"
+    sensors = ['normal_ccd', 'skipper', 'perfect']
+    photons_per_pixel_list = np.geomspace(100, 500000, 10)
+    for photons_per_pixel in photons_per_pixel_list:
+        for sensor in sensors:
+            # Load the config file and modify the "sensor" and "name" fields
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            split_config_name = config['options']['name'].split(' | ')
+            config['sensor']['type'] = sensor
+            config['source']['photons_per_pixel'] = int(photons_per_pixel)
+            config['options']['name'] = f"{split_config_name[0]} | {split_config_name[1]} | {sensor} | {photons_per_pixel}"
+            # Save the modified config file
+            with open(f'modified_configs/{config_name}.json', 'w') as f:
+                json.dump(config, f, indent=4)
+
+            # Run the experiment with the modified config file
+            os.system(f'python experiment.py --config modified_configs/{config_name}.json --parallelize')
+            # Remove the modified config file
+            os.remove(f'modified_configs/{config_name}.json')
 
 def run_small_to_large_experiment(config_path: str):
     """
@@ -96,8 +121,8 @@ def run_sensor_resolution_change_experiment(config_path: str, sensor_resolutions
 def run_reconstruction_method_experiment(config_path: str):
 
     # List available reconstruction methods
-    # reconstruction_methods = ['fourier', 'mura', 'general']
-    reconstruction_methods = ['fourier', 'general']
+    reconstruction_methods = ['fourier', 'mura', 'general']
+    # reconstruction_methods = ['fourier', 'general']
 
     # Name the config as the experiment.
     config_name = 'reconstruction_method_experiment'
@@ -124,3 +149,7 @@ if __name__ == '__main__':
     # run_reconstruction_method_experiment(CONFIG_PATH)
     CONFIG_PATH = 'config.json'
     run_reconstruction_method_experiment(CONFIG_PATH)
+    # CONFIG_PATH = 'configs/satellite_experiment.json'
+    # run_sensor_comparison_experiment(CONFIG_PATH)
+    # CONFIG_PATH = 'config.json'
+    # run_sensor_comparison_lambda_experiment(CONFIG_PATH)
