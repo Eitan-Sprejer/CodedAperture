@@ -330,6 +330,10 @@ class MaskGenerator:
             return self.generate_pinhole_mask()
         if self.mask_type == "frame":
             return self.generate_frame_mask()
+        if self.mask_type == "lines":
+            return self.generate_lines_mask()
+        if self.mask_type == "full_lines":
+            return self.generate_full_lines_mask()
         if self.mask_type == "mura":
             return self.generate_apertures_mask()
         if "pattern" in self.mask_type:
@@ -399,6 +403,41 @@ class MaskGenerator:
                 (length + slit_inner_radius) / 2
             ),
         ] = 0
+        return mask
+
+    def generate_lines_mask(self):
+        """Generates two horizontal lines, separated by the mask width."""
+        height, length = self.mask_resolution
+        mask = np.zeros((height, length))
+        mask[
+            int(((height - self.mask_width) - 10) / 2): int(((height - self.mask_width) + 10) / 2),
+            int(length / 4) : int(3 * length / 4),
+        ] = 1
+        mask[
+            int(((height + self.mask_width) - 10) / 2): int(((height + self.mask_width) + 10) / 2),
+            int(length / 4) : int(3 * length / 4),
+        ] = 1
+        # Remove the middle 10% part
+        mask[
+            :,
+            int((4.5 * length) / 10) : int((5.5 * length) / 10),
+        ] = 0
+        return mask
+
+    def generate_full_lines_mask(self):
+        """Generates two horizontal lines, separated by the mask width.
+        In this case, the lines are not centered because of the problem with the
+        image reconstruction with centered objects."""
+        height, length = self.mask_resolution
+        mask = np.zeros((height, length))
+        mask[
+            int(((1.5 * height - self.mask_width) - 10) / 2): int(((1.5 * height - self.mask_width) + 10) / 2),
+            :,
+        ] = 1
+        mask[
+            int(((1.5 * height + self.mask_width) - 10) / 2): int(((1.5 * height + self.mask_width) + 10) / 2),
+            :,
+        ] = 1
         return mask
 
     def load_slit_from_pixelart(self):
