@@ -1,0 +1,7 @@
+codedapertures==0.10
+matplotlib==3.5.2
+numpy==1.26.4
+Pillow==10.2.0
+scipy==1.12.0
+tqdm==4.64.0
+opencv-python==4.6.0.*
