@@ -1,5 +1,4 @@
+coded_aperture_env/*
 results/*
 *.DS_Store
 *.json
-*.pyc
-*.txt
