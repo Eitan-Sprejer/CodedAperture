@@ -36,5 +36,5 @@ Contributions are welcome! If you would like to contribute to CodedAperture, ple
 
 ## Contact
 
-If you have any questions or suggestions, please feel free to contact us at [eitusprejer@gmail.com](mailto:eitusprejer@gmail.com).
+If you have any questions or suggestions, please feel free to contact us at [eitusprejer@gmail.com](mailto:eitusprejer@gmail.com) [triniborrell@gmail.com](mailto:triniborrell@gmail.com).
 
