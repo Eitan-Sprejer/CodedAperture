@@ -21,7 +21,7 @@ To install and setup CodedAperture, follow these steps on the terminal:
 
 ## Usage
 
-There's further explanations on how to run the code, and how does it work, on the [User's Manual](LinkAManual)
+There's further explanations on how to run the code, and how does it work, on the [User's Manual](https://www.overleaf.com/project/654cec3e02cb9274ab630120)
 
 ## Contributing
 
